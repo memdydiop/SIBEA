@@ -16,6 +16,26 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                @can('viewAny', App\Models\Department::class)
+                    <flux:sidebar.group :heading="__('Administration')" class="grid">
+                        <flux:sidebar.item icon="building-office" :href="route('admin.departments')" :current="request()->routeIs('admin.departments')" wire:navigate>
+                            {{ __('Départements') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="user-group" :href="route('admin.teams')" :current="request()->routeIs('admin.teams')" wire:navigate>
+                            {{ __('Équipes') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="users" :href="route('admin.employees')" :current="request()->routeIs('admin.employees')" wire:navigate>
+                            {{ __('Employés') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="shield-check" :href="route('admin.users')" :current="request()->routeIs('admin.users')" wire:navigate>
+                            {{ __('Utilisateurs') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.audit')" :current="request()->routeIs('admin.audit')" wire:navigate>
+                            {{ __('Journal d’audit') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endcan
             </flux:sidebar.nav>
 
             <flux:spacer />
