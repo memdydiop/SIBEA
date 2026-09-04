@@ -23,6 +23,7 @@ class UpdateEmployeeAction
                 'required',
                 'string',
                 'max:50',
+                'regex:/^EMP-\d{4}-\d{4}$/',
                 Rule::unique('employees', 'registration_number')->ignore($employee->id),
             ],
             'first_name' => ['required', 'string', 'max:100'],
@@ -46,6 +47,7 @@ class UpdateEmployeeAction
             'emergency_contact_name' => ['nullable', 'string', 'max:150'],
             'emergency_contact_phone' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
+            'is_public' => ['nullable', 'boolean'],
         ])->validate();
 
         $employee->update($validated);

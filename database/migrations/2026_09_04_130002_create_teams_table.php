@@ -12,14 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('teams', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete();
-            $table->string('name');
-            $table->string('code')->unique();
-            $table->foreignId('leader_id')->nullable()->constrained('employees')->nullOnDelete();
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->id()->comment('Identifiant primaire');
+            $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete()->comment('Département de rattachement (FK departments)');
+            $table->string('name')->comment('Nom de l\'équipe');
+            $table->string('code')->unique()->comment('Code unique de l\'équpe');
+            $table->foreignId('leader_id')->nullable()->constrained('employees')->nullOnDelete()->comment('Chef d\'équipe (FK employees)');
+            $table->text('description')->nullable()->comment('Description de l\'équipe');
+            $table->boolean('is_active')->default(true)->index()->comment('Équipe active');
             $table->timestamps();
+
+            $table->index(['department_id', 'is_active']);
         });
     }
 

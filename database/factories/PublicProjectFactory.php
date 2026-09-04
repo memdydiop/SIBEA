@@ -23,6 +23,8 @@ class PublicProjectFactory extends Factory
         return [
             'slug' => Str::slug($title),
             'title' => $title,
+            'meta_title' => fake()->sentence(3),
+            'meta_description' => fake()->paragraph(),
             'category' => fake()->randomElement(['Bâtiment', 'Génie civil', 'VRD', 'Énergie']),
             'client_name' => fake()->company(),
             'location' => fake()->city(),

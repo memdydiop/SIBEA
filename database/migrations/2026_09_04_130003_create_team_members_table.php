@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('team_members', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete();
-            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->string('role_in_team')->nullable();
-            $table->date('joined_at')->nullable();
-            $table->date('left_at')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->id()->comment('Identifiant primaire');
+            $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->comment('Équipe concernée (FK teams)');
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete()->comment('Employé membre (FK employees)');
+            $table->string('role_in_team')->nullable()->comment('Rôle de l\'employé au sein de l\'équipe');
+            $table->date('joined_at')->nullable()->comment('Date d\'entrée dans l\'équipe');
+            $table->date('left_at')->nullable()->comment('Date de sortie de l\'équipe');
+            $table->boolean('is_active')->default(true)->comment('Appartenance active à l\'équipe');
             $table->timestamps();
 
             $table->unique(['team_id', 'employee_id']);

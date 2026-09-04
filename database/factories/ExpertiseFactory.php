@@ -23,6 +23,8 @@ class ExpertiseFactory extends Factory
         return [
             'slug' => Str::slug($title),
             'title' => $title,
+            'meta_title' => fake()->sentence(3),
+            'meta_description' => fake()->paragraph(),
             'excerpt' => fake()->paragraph(),
             'content' => fake()->paragraphs(3, true),
             'icon' => null,

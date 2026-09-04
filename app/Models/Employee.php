@@ -35,6 +35,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $emergency_contact_name
  * @property string|null $emergency_contact_phone
  * @property string|null $notes
+ * @property bool $is_public
+ * @property string|null $avatar_url
+ * @property int $vitrine_order
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -58,6 +61,9 @@ use Illuminate\Support\Carbon;
     'emergency_contact_name',
     'emergency_contact_phone',
     'notes',
+    'is_public',
+    'avatar_url',
+    'vitrine_order',
 ])]
 class Employee extends Model
 {
@@ -78,6 +84,9 @@ class Employee extends Model
             'end_date' => 'date',
             'hourly_cost_rate' => 'decimal:2',
             'daily_cost_rate' => 'decimal:2',
+            'is_public' => 'boolean',
+            'avatar_url' => 'string',
+            'vitrine_order' => 'integer',
         ];
     }
 
@@ -164,5 +173,14 @@ class Employee extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', EmployeeStatus::Active);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopePublic(Builder $query): Builder
+    {
+        return $query->where('is_public', true)->where('status', EmployeeStatus::Active);
     }
 }

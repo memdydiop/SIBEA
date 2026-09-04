@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('audit_logs', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('action', 100);
-            $table->string('auditable_type')->nullable();
-            $table->unsignedBigInteger('auditable_id')->nullable();
-            $table->json('old_values')->nullable();
-            $table->json('new_values')->nullable();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
+            $table->id()->comment('Identifiant primaire');
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete()->comment('Utilisateur à l\'origine de l\'action (FK users)');
+            $table->string('action', 100)->comment('Action réalisée (create, update, delete, login, etc.)');
+            $table->string('auditable_type')->nullable()->comment('Type du modèle audité (classe polymorphique)');
+            $table->unsignedBigInteger('auditable_id')->nullable()->comment('Identifiant du modèle audité');
+            $table->json('old_values')->nullable()->comment('Anciennes valeurs (JSON) avant modification');
+            $table->json('new_values')->nullable()->comment('Nouvelles valeurs (JSON) après modification');
+            $table->string('ip_address', 45)->nullable()->comment('Adresse IP de l\'auteur de l\'action');
+            $table->text('user_agent')->nullable()->comment('User-Agent du navigateur');
             $table->timestamps();
 
             $table->index(['auditable_type', 'auditable_id']);

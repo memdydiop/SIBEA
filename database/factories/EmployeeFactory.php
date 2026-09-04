@@ -25,7 +25,7 @@ class EmployeeFactory extends Factory
         return [
             'user_id' => null,
             'department_id' => Department::factory(),
-            'registration_number' => 'SIB-'.fake()->unique()->numerify('####'),
+            'registration_number' => 'EMP-'.fake()->unique()->numerify('####').'-'.fake()->numerify('####'),
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
@@ -49,6 +49,7 @@ class EmployeeFactory extends Factory
             'emergency_contact_name' => fake()->name(),
             'emergency_contact_phone' => fake()->phoneNumber(),
             'notes' => fake()->optional()->sentence(),
+            'is_public' => fake()->boolean(30),
         ];
     }
 }

@@ -127,8 +127,14 @@ class OrganizationSeeder extends Seeder
             $adminUser->assignRole('super-admin');
         }
 
+        // Migrate legacy matricule SIB-0001 → EMP-0000-0001 (idempotent)
+        $legacy = Employee::withTrashed()->where('registration_number', 'SIB-0001')->first();
+        if ($legacy) {
+            $legacy->update(['registration_number' => 'EMP-0000-0001']);
+        }
+
         $adminEmployee = Employee::firstOrCreate(
-            ['registration_number' => 'SIB-0001'],
+            ['registration_number' => 'EMP-0000-0001'],
             [
                 'user_id' => $adminUser->id,
                 'department_id' => $directionGenerale->id,

@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $expertise_id
  * @property string $slug
  * @property string $title
+ * @property string|null $meta_title
+ * @property string|null $meta_description
  * @property string|null $excerpt
  * @property string|null $content
  * @property string|null $icon
@@ -23,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['expertise_id', 'slug', 'title', 'excerpt', 'content', 'icon', 'order', 'is_active'])]
+#[Fillable(['expertise_id', 'slug', 'title', 'meta_title', 'meta_description', 'excerpt', 'content', 'icon', 'order', 'is_active'])]
 class Service extends Model
 {
     /** @use HasFactory<ServiceFactory> */

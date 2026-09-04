@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true)->after('remember_token');
+            $table->boolean('is_active')->default(true)->after('remember_token')->comment('Compte utilisateur actif');
         });
     }
 

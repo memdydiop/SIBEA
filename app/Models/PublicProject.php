@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $slug
  * @property string $title
+ * @property string|null $meta_title
+ * @property string|null $meta_description
  * @property string $category
  * @property string|null $client_name
  * @property string|null $location
@@ -30,6 +32,8 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'slug',
     'title',
+    'meta_title',
+    'meta_description',
     'category',
     'client_name',
     'location',

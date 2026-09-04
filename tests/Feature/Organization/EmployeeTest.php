@@ -24,7 +24,7 @@ test('can create employee with auto generated matricule', function () {
     ]);
 
     expect($employee)->toBeInstanceOf(Employee::class)
-        ->and($employee->registration_number)->toMatch('/^SIB-\d{4}$/')
+        ->and($employee->registration_number)->toMatch('/^EMP-\d{4}-\d{4}$/')
         ->and($employee->full_name)->toBe('Kouamé Konan')
         ->and($employee->department->id)->toBe($department->id);
 });
@@ -35,7 +35,7 @@ test('can create employee associated with a user account', function () {
 
     $employee = $action([
         'user_id' => $user->id,
-        'registration_number' => 'SIB-9999',
+        'registration_number' => 'EMP-9999-9999',
         'first_name' => 'Jean',
         'last_name' => 'Dupont',
         'job_title' => 'Conducteur de travaux',
@@ -48,12 +48,12 @@ test('can create employee associated with a user account', function () {
 });
 
 test('employee registration number must be unique', function () {
-    Employee::factory()->create(['registration_number' => 'SIB-0042']);
+    Employee::factory()->create(['registration_number' => 'EMP-0042-0042']);
 
     $action = app(CreateEmployeeAction::class);
 
     expect(fn () => $action([
-        'registration_number' => 'SIB-0042',
+        'registration_number' => 'EMP-0042-0042',
         'first_name' => 'Autre',
         'last_name' => 'Employé',
         'job_title' => 'Maçon',

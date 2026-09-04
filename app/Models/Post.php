@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $author_id
  * @property string $slug
  * @property string $title
+ * @property string|null $meta_title
+ * @property string|null $meta_description
  * @property string|null $category
  * @property string|null $excerpt
  * @property string|null $content
@@ -28,6 +30,8 @@ use Illuminate\Support\Carbon;
     'author_id',
     'slug',
     'title',
+    'meta_title',
+    'meta_description',
     'category',
     'excerpt',
     'content',

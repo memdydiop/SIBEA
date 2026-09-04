@@ -28,6 +28,7 @@ new #[Title('Employés')] class extends Component {
     public string $status = 'actif';
     public ?string $hire_date = null;
     public ?string $end_date = null;
+    public bool $is_public = false;
 
     public ?int $editingId = null;
     public bool $showModal = false;
@@ -57,6 +58,7 @@ new #[Title('Employés')] class extends Component {
     {
         Gate::authorize('create', Employee::class);
         $this->reset(['registration_number', 'first_name', 'last_name', 'job_title', 'email', 'phone', 'hire_date', 'end_date', 'editingId']);
+        $this->is_public = false;
         $this->contract_type = ContractType::Cdi->value;
         $this->status = EmployeeStatus::Active->value;
         $this->department_id = $this->departments->first()?->id;
@@ -78,6 +80,7 @@ new #[Title('Employés')] class extends Component {
         $this->contract_type = $employee->contract_type->value;
         $this->status = $employee->status->value;
         $this->hire_date = $employee->hire_date?->format('Y-m-d');
+        $this->is_public = $employee->is_public;
         $this->end_date = $employee->end_date?->format('Y-m-d');
         $this->showModal = true;
     }
@@ -95,6 +98,7 @@ new #[Title('Employés')] class extends Component {
             'contract_type' => $this->contract_type,
             'status' => $this->status,
             'hire_date' => $this->hire_date,
+            'is_public' => $this->is_public,
             'end_date' => $this->end_date,
         ];
 
@@ -155,6 +159,7 @@ new #[Title('Employés')] class extends Component {
                         <th class="text-left px-4 py-3">{{ __('Fonction') }}</th>
                         <th class="text-left px-4 py-3">{{ __('Département') }}</th>
                         <th class="text-left px-4 py-3">{{ __('Contrat') }}</th>
+                        <th class="text-center px-4 py-3">{{ __('Public') }}</th>
                         <th class="text-center px-4 py-3">{{ __('Statut') }}</th>
                         <th class="text-right px-4 py-3">{{ __('Actions') }}</th>
                     </tr>
@@ -167,6 +172,7 @@ new #[Title('Employés')] class extends Component {
                             <td class="px-4 py-3">{{ $emp->job_title }}</td>
                             <td class="px-4 py-3">{{ $emp->department?->name ?? '—' }}</td>
                             <td class="px-4 py-3">{{ $emp->contract_type->label() }}</td>
+                            <td class="px-4 py-3 text-center">@if($emp->is_public)<flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>@else — @endif</td>
                             <td class="px-4 py-3 text-center"><flux:badge :variant="$emp->status->badgeColor()" size="sm">{{ $emp->status->label() }}</flux:badge></td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
@@ -176,7 +182,7 @@ new #[Title('Employés')] class extends Component {
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">{{ __('Aucun employé.') }}</td></tr>
+                        <tr><td colspan="8" class="px-4 py-8 text-center text-zinc-500">{{ __('Aucun employé.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -189,7 +195,7 @@ new #[Title('Employés')] class extends Component {
             <flux:heading size="lg">{{ $editingId ? __('Modifier l’employé') : __('Nouvel employé') }}</flux:heading>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <flux:input wire:model="registration_number" :label="__('Matricule (auto si vide)')" placeholder="SIB-0002" />
+                <flux:input wire:model="registration_number" :label="__('Matricule (auto si vide)')" placeholder="EMP-0000-0002" />
                 <flux:select wire:model="department_id" :label="__('Département')">
                     <flux:select.option value="">{{ __('Aucun') }}</flux:select.option>
                     @foreach($this->departments as $dept)
@@ -213,6 +219,7 @@ new #[Title('Employés')] class extends Component {
                 </flux:select>
                 <flux:input wire:model="hire_date" :label="__('Date d’embauche')" type="date" />
                 <flux:input wire:model="end_date" :label="__('Date de fin (optionnel)')" type="date" />
+                <flux:checkbox wire:model="is_public" :label="__('Visible sur vitrine équipe')" />
             </div>
 
             <div class="flex justify-end gap-2">

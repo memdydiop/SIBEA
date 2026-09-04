@@ -12,14 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('departments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('parent_id')->nullable()->constrained('departments')->nullOnDelete();
-            $table->string('name');
-            $table->string('code')->unique();
-            $table->text('description')->nullable();
-            $table->unsignedBigInteger('manager_id')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->id()->comment('Identifiant primaire');
+            $table->foreignId('parent_id')->nullable()->constrained('departments')->nullOnDelete()->comment('Département parent (hiérarchie, FK departments)');
+            $table->string('name')->comment('Nom du département');
+            $table->string('code')->unique()->comment('Code unique du département');
+            $table->text('description')->nullable()->comment('Description du département');
+            $table->unsignedBigInteger('manager_id')->nullable()->comment('Responsable du département (FK employees)');
+            $table->boolean('is_active')->default(true)->index()->comment('Département actif (visible / utilisable)');
             $table->timestamps();
+
+            $table->index(['parent_id', 'is_active']);
         });
     }
 

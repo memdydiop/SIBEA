@@ -14,6 +14,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $slug
  * @property string $title
+ * @property string|null $meta_title
+ * @property string|null $meta_description
  * @property string|null $excerpt
  * @property string|null $content
  * @property string|null $icon
@@ -23,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['slug', 'title', 'excerpt', 'content', 'icon', 'cover_image', 'order', 'is_active'])]
+#[Fillable(['slug', 'title', 'meta_title', 'meta_description', 'excerpt', 'content', 'icon', 'cover_image', 'order', 'is_active'])]
 class Expertise extends Model
 {
     /** @use HasFactory<ExpertiseFactory> */
