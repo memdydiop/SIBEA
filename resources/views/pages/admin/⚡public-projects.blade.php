@@ -52,7 +52,7 @@ new #[Title('Réalisations')] class extends Component {
     public function openCreate(): void
     {
         Gate::authorize('create', PublicProject::class);
-        $this->reset(['slug', 'title', 'client_name', 'location', 'description', 'cover_image', 'cover_image_upload', 'editingId']);
+        $this->reset(['slug', 'title', 'client_name', 'location', 'description', 'cover_image', 'meta_title', 'meta_description', 'cover_image_upload', 'editingId']);
         $this->category = 'Bâtiment';
         $this->year = now()->year;
         $this->is_featured = false;

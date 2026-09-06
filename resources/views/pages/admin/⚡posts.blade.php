@@ -49,7 +49,7 @@ new #[Title('Actualités')] class extends Component {
     public function openCreate(): void
     {
         Gate::authorize('create', Post::class);
-        $this->reset(['slug', 'title', 'category', 'excerpt', 'content', 'cover_image', 'cover_image_upload', 'editingId']);
+        $this->reset(['slug', 'title', 'category', 'excerpt', 'content', 'cover_image', 'meta_title', 'meta_description', 'cover_image_upload', 'editingId']);
         $this->is_published = false;
         $this->published_at = now()->format('Y-m-d');
         $this->showModal = true;
@@ -65,8 +65,8 @@ new #[Title('Actualités')] class extends Component {
         $this->category = $p->category;
         $this->excerpt = $p->excerpt;
         $this->content = $p->content;
-        $this->meta_title = $post->meta_title;
-        $this->meta_description = $post->meta_description;
+        $this->meta_title = $p->meta_title;
+        $this->meta_description = $p->meta_description;
         $this->cover_image = $p->cover_image;
         $this->is_published = $p->is_published;
         $this->published_at = $p->published_at?->format('Y-m-d');
@@ -80,9 +80,7 @@ new #[Title('Actualités')] class extends Component {
                 ['cover_image_upload' => $this->cover_image_upload],
                 ['cover_image_upload' => ['image', 'mimes:jpeg,png,webp', 'max:2048', 'dimensions:max_width=4000,max_height=4000']],
             )->validate();
-            $this->meta_title = $post->meta_title;
-        $this->meta_description = $post->meta_description;
-        $this->cover_image = $this->cover_image_upload->store('cms', 'public');
+            $this->cover_image = $this->cover_image_upload->store('cms', 'public');
         }
 
         if ($this->cover_image && str_starts_with($this->cover_image, 'cms/')) {

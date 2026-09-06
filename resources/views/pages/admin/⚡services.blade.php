@@ -53,7 +53,7 @@ new #[Title('Services')] class extends Component {
     public function openCreate(): void
     {
         Gate::authorize('create', Service::class);
-        $this->reset(['slug', 'title', 'excerpt', 'content', 'icon', 'editingId']);
+        $this->reset(['slug', 'title', 'excerpt', 'content', 'icon', 'meta_title', 'meta_description', 'editingId']);
         $this->expertise_id = $this->expertises->first()?->id;
         $this->order = 0;
         $this->is_active = true;
@@ -71,6 +71,8 @@ new #[Title('Services')] class extends Component {
         $this->excerpt = $s->excerpt;
         $this->content = $s->content;
         $this->icon = $s->icon;
+        $this->meta_title = $s->meta_title;
+        $this->meta_description = $s->meta_description;
         $this->order = $s->order;
         $this->is_active = $s->is_active;
         $this->showModal = true;
@@ -85,6 +87,8 @@ new #[Title('Services')] class extends Component {
             'excerpt' => $this->excerpt,
             'content' => $this->content,
             'icon' => $this->icon,
+            'meta_title' => $this->meta_title,
+            'meta_description' => $this->meta_description,
             'order' => $this->order,
             'is_active' => $this->is_active,
         ];

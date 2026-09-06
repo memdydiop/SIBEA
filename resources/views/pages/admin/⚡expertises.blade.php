@@ -49,7 +49,7 @@ new #[Title('Expertises')] class extends Component {
     public function openCreate(): void
     {
         Gate::authorize('create', Expertise::class);
-        $this->reset(['slug', 'title', 'excerpt', 'content', 'icon', 'cover_image', 'cover_image_upload', 'editingId']);
+        $this->reset(['slug', 'title', 'excerpt', 'content', 'icon', 'cover_image', 'meta_title', 'meta_description', 'cover_image_upload', 'editingId']);
         $this->order = 0;
         $this->is_active = true;
         $this->showModal = true;
@@ -65,8 +65,8 @@ new #[Title('Expertises')] class extends Component {
         $this->excerpt = $exp->excerpt;
         $this->content = $exp->content;
         $this->icon = $exp->icon;
-        $this->meta_title = $expertise->meta_title;
-        $this->meta_description = $expertise->meta_description;
+        $this->meta_title = $exp->meta_title;
+        $this->meta_description = $exp->meta_description;
         $this->cover_image = $exp->cover_image;
         $this->order = $exp->order;
         $this->is_active = $exp->is_active;
@@ -76,9 +76,7 @@ new #[Title('Expertises')] class extends Component {
     public function save(CreateExpertiseAction $create, UpdateExpertiseAction $update, LogAuditAction $audit): void
     {
         if ($this->cover_image_upload) {
-            $this->meta_title = $expertise->meta_title;
-        $this->meta_description = $expertise->meta_description;
-        $this->cover_image = $this->cover_image_upload->store('cms/expertises', 'public');
+            $this->cover_image = $this->cover_image_upload->store('cms/expertises', 'public');
         }
 
         $data = [
@@ -88,6 +86,8 @@ new #[Title('Expertises')] class extends Component {
             'content' => $this->content,
             'icon' => $this->icon,
             'cover_image' => $this->cover_image ? (str_starts_with($this->cover_image, 'cms/') ? '/storage/'.$this->cover_image : $this->cover_image) : null,
+            'meta_title' => $this->meta_title,
+            'meta_description' => $this->meta_description,
             'order' => $this->order,
             'is_active' => $this->is_active,
         ];

@@ -153,3 +153,15 @@ select:focus[data-flux-control] {
         font-weight: 500;
     }
 }
+
+[data-flux-sidebar] {
+    @apply p-0 gap-0;
+}
+
+[data-flux-sidebar-header] {
+    @apply px-4 h-16;
+}
+
+[data-flux-sidebar-profile] {
+    @apply mx-4 mb-2 h-10 w-55;
+}
