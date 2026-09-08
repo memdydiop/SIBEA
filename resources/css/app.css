@@ -7,8 +7,6 @@
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 /* === SIBEA Design Tokens — Charte Graphique Référentiel (Tailwind v4 @theme) === */
 @theme {
     /* Fonts — CDC 5 */
@@ -72,14 +70,6 @@
     /* Spacing échelle CDC 9 déjà Tailwind */
 }
 
-@layer theme {
-    .dark {
-        --color-accent: #F5B400;
-        --color-accent-content: #11181F;
-        --color-accent-foreground: var(--color-primary-900);
-    }
-}
-
 @layer base {
     *,
     ::after,
@@ -114,43 +104,68 @@
     @apply  !mb-0 !leading-tight;
 }
 
+[data-flux-control] {
+    @apply rounded;
+}
+
+[data-flux-control][name="search"] {
+    @apply border-none pl-0;
+}
+
 input:focus[data-flux-control],
 textarea:focus[data-flux-control],
 select:focus[data-flux-control] {
-    @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
+    @apply outline-hidden rounded!;
 }
 
 /* Flux Mapping CDC 31 — tokens charte */
 @layer components {
+    [data-flux-button] {
+        @apply rounded-sm! border border-[rgba(49,58,70,0.1)]
+    }
     /* CTA principal — Jaune chantier */
     [data-flux-button][data-variant="primary"] {
-        background: var(--color-accent);
-        color: var(--color-accent-content);
-        border-radius: var(--radius-sm);
-        font-family: var(--font-display);
-        font-weight: 600;
+        @apply bg-accent text-accent-content rounded-sm font-display font-semibold
     }
     [data-flux-button][data-variant="primary"]:hover {
-        background: var(--color-accent-300);
+        @apply bg-accent-300
     }
 
     /* CTA secondaire — Bleu nuit */
     [data-flux-button][data-variant="ghost"] {
-        border-radius: var(--radius-sm);
+        @apply rounded-sm
     }
 
     /* Cards — overide Flux neutral */
     [data-flux-card] {
-        background: var(--color-surface);
-        border-color: var(--color-border);
-        border-radius: var(--radius-md);
-        box-shadow: 0 1px 2px rgba(11,31,51,0.06);
+        @apply bg-surface border-border rounded-md shadow-[0_1px_2px_rgba(11,31,51,0.06)]
+
     }
 
     /* Badges — compact CDC 26 */
     [data-flux-badge] {
-        border-radius: 9999px;
-        font-weight: 500;
+        @apply rounded-full font-semibold;
+    }
+
+
+    [data-flux-card] {
+        @apply p-0! overflow-hidden rounded-md! border-0! shadow-[0px_1px_4px_0px_rgba(130,143,163,0.15)];
+    }
+
+     [data-flux-column] {
+        @apply py-2! text-sm!
+     }
+
+    [data-flux-column]:first-child, [data-flux-cell]:first-child {
+        @apply ps-3!
+    }
+
+    [data-flux-column]:last-child, [data-flux-cell]:last-child {
+        @apply pe-3!
+    }
+
+    [data-flux-pagination] {
+        @apply p-4 border-t border-dashed border-slate-200!
     }
 }
 
@@ -163,5 +178,80 @@ select:focus[data-flux-control] {
 }
 
 [data-flux-sidebar-profile] {
-    @apply mx-4 mb-2 h-10 w-55;
+    @apply h-10 w-55;
+}
+
+/* === Ynex Sidebar — copie charte https://nextjs.spruko.com/tailwind/app/ynex-ts/preview/dashboards/crm/ === */
+[data-flux-sidebar][data-menu-styles="dark"] {
+    --color-ynex-primary: var(--ynex-primary, #845adf);
+    --color-ynex-primary-hover: var(--ynex-primary-hover, #7a4fd6);
+    @apply bg-[#111c43]! border-[rgba(255,255,255,0.08)]! text-[#a3aed1]!;
+    
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-header] {
+    @apply px-4 bg-[#111c43]! border-[rgba(255,255,255,0.08)]!;
+    
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-group] > div:first-child > div,
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-group] > div > div.text-zinc-400 {
+    @apply px-3 py-2 text-[#a3aed1]! text-[0.625rem]! font-semibold! uppercase! opacity-65!;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item] {
+    color: #a3aed1 !important;
+    border: 1px solid transparent !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    @apply h-9 ;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item]:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item][data-current],
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item][data-active] {
+    background: rgba(255,255,255,0.06) !important;
+    color: #ffffff !important;
+    border-color: rgba(255,255,255,0.06) !important;
+    box-shadow: 0 0.01px 0.01px rgba(132, 90, 223, 0.35) !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item][data-current] svg,
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item][data-active] svg,
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item][data-current] [data-flux-icon],
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item][data-active] [data-flux-icon] {
+    color: #ffffff !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-item] svg {
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+    opacity: 0.9;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-profile] {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    @apply rounded-lg;
+}
+[data-flux-sidebar][data-menu-styles="dark"] [data-flux-sidebar-profile]:hover {
+    background: rgba(255,255,255,0.08) !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"] .simplebar-track.simplebar-vertical {
+    width: 6px !important;
+    right: 2px !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"] .simplebar-scrollbar:before {
+    background: rgba(255,255,255,0.18) !important;
+    border-radius: 9999px !important;
+    opacity: 1 !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"] .simplebar-track.simplebar-vertical:hover .simplebar-scrollbar:before,
+[data-flux-sidebar][data-menu-styles="dark"] .simplebar-scrollbar.simplebar-visible:before {
+    background: rgba(255,255,255,0.28) !important;
+}
+[data-flux-sidebar][data-menu-styles="dark"][data-flux-sidebar-collapsed-desktop] {
+    @apply w-14;
+}
+
+[data-flux-main] {
+    @apply bg-[#f6f7fb] p-5!
 }

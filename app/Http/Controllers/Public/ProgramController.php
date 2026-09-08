@@ -4,14 +4,23 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Program;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ProgramController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $query = Program::published();
+
+        if ($city = $request->query('ville')) {
+            $query->where('city', $city);
+        }
+
         return view('public.programs.index', [
-            'programs' => Program::published()->paginate(12),
+            'programs' => $query->paginate(12)->withQueryString(),
+            'cities' => Program::published()->reorder()->select('city')->distinct()->pluck('city')->filter()->values(),
+            'activeCity' => $city ?? null,
         ]);
     }
 
@@ -22,6 +31,11 @@ class ProgramController extends Controller
         return view('public.programs.show', [
             'program' => $program,
             'lots' => $program->lots()->orderBy('reference')->get(),
+            'relatedPrograms' => Program::published()
+                ->where('id', '!=', $program->id)
+                ->when($program->city, fn ($q) => $q->where('city', $program->city))
+                ->limit(3)
+                ->get(),
         ]);
     }
 }

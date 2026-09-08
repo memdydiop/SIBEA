@@ -44,9 +44,7 @@ new #[Title('Réalisations')] class extends Component {
     #[Computed]
     public function projects()
     {
-        return PublicProject::when($this->search, fn ($q) => $q->where('title', 'ilike', "%{$this->search}%")->orWhere('category', 'ilike', "%{$this->search}%"))
-            ->orderByDesc('year')
-            ->paginate(15);
+        return PublicProject::when($this->search, fn($q) => $q->where('title', 'ilike', "%{$this->search}%")->orWhere('category', 'ilike', "%{$this->search}%"))->orderByDesc('year')->paginate(15);
     }
 
     public function openCreate(): void
@@ -85,17 +83,14 @@ new #[Title('Réalisations')] class extends Component {
     public function save(CreatePublicProjectAction $create, UpdatePublicProjectAction $update, LogAuditAction $audit): void
     {
         if ($this->cover_image_upload) {
-            Validator::make(
-                ['cover_image_upload' => $this->cover_image_upload],
-                ['cover_image_upload' => ['image', 'mimes:jpeg,png,webp', 'max:2048', 'dimensions:max_width=4000,max_height=4000']],
-            )->validate();
+            Validator::make(['cover_image_upload' => $this->cover_image_upload], ['cover_image_upload' => ['image', 'mimes:jpeg,png,webp', 'max:2048', 'dimensions:max_width=4000,max_height=4000']])->validate();
 
             $path = $this->cover_image_upload->store('cms/projects', 'public');
-            $this->cover_image = '/storage/'.$path;
+            $this->cover_image = '/storage/' . $path;
         }
 
         if ($this->cover_image && str_starts_with($this->cover_image, 'cms/')) {
-            $this->cover_image = '/storage/'.$this->cover_image;
+            $this->cover_image = '/storage/' . $this->cover_image;
         }
 
         $data = [
@@ -154,53 +149,89 @@ new #[Title('Réalisations')] class extends Component {
     <flux:heading size="xl" level="1">{{ __('Réalisations publiques') }}</flux:heading>
     <flux:subheading class="mb-6">{{ __('Projets vitrine — publiés explicitement (CDC 9.2)') }}</flux:subheading>
 
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <flux:input wire:model.live.debounce.300ms="search" placeholder="{{ __('Rechercher titre ou catégorie...') }}" class="max-w-sm" />
-        @can('create', App\Models\PublicProject::class)
-            <flux:button variant="primary" icon="plus" wire:click="openCreate">{{ __('Nouveau projet') }}</flux:button>
-        @endcan
+    @php
+        $totalProjects = \App\Models\PublicProject::count();
+        $publishedProjects = \App\Models\PublicProject::where('is_published', true)->count();
+    @endphp
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <x-stat-widget title="Total" :value="$totalProjects" suffix=" projets" icon="building-office-2"
+            trendLabel="Tous projets" />
+        <x-stat-widget title="Publiés" :value="$publishedProjects" :suffix="' / ' . $totalProjects" icon="check-circle" :trend="$totalProjects > 0 ? round(($publishedProjects / $totalProjects) * 100, 1) . '%' : '0%'"
+            :trendUp="true" trendLabel="Visibles" />
+        <x-stat-widget title="Vedettes" :value="\App\Models\PublicProject::where('is_featured', true)->count()" suffix=" vedettes" icon="star" trendLabel="Accueil" />
     </div>
 
-    <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500">
-                    <tr>
-                        <th class="text-left px-4 py-3">{{ __('Titre') }}</th>
-                        <th class="text-left px-4 py-3">{{ __('Catégorie') }}</th>
-                        <th class="text-center px-4 py-3">{{ __('Année') }}</th>
-                        <th class="text-center px-4 py-3">{{ __('Publié') }}</th>
-                        <th class="text-center px-4 py-3">{{ __('Vedette') }}</th>
-                        <th class="text-right px-4 py-3">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse($this->projects as $p)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                            <td class="px-4 py-3 font-medium">{{ $p->title }}<div class="text-xs text-zinc-500">{{ $p->slug }}</div></td>
-                            <td class="px-4 py-3"><flux:badge size="sm">{{ $p->category }}</flux:badge></td>
-                            <td class="px-4 py-3 text-center">{{ $p->year ?? '—' }}</td>
-                            <td class="px-4 py-3 text-center">@if($p->is_published)<flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>@else<flux:badge variant="zinc" size="sm">{{ __('Non') }}</flux:badge>@endif</td>
-                            <td class="px-4 py-3 text-center">@if($p->is_featured)<flux:badge variant="warning" size="sm">{{ __('Oui') }}</flux:badge>@else — @endif</td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
-                                    @can('update', $p)<flux:button variant="ghost" size="sm" icon="pencil-square" wire:click="openEdit({{ $p->id }})" />@endcan
-                                    @can('delete', $p)<flux:button variant="ghost" size="sm" icon="trash" wire:click="delete({{ $p->id }})" wire:confirm="{{ __('Supprimer ?') }}" class="text-red-500" />@endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="6" class="px-4 py-8 text-center text-zinc-500">{{ __('Aucun projet.') }}</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="p-4 border-t">{{ $this->projects->links() }}</div>
-    </div>
+    <flux:card class="!p-0 overflow-hidden">
+        <x-card-header title="Réalisations" subtitle="Projets vitrine — publiés">
+            <x-slot:actions>
+                <!-- actions will be in toolbar -->
+            </x-slot:actions>
+        </x-card-header>
+
+        <x-table-toolbar searchPlaceholder="Search project..." searchModel="search" statusFilter="statusFilter"
+            :statusOptions="['All' => 'Status', 'published' => 'Publiés', 'draft' => 'Brouillons']" :perPageOptions="[5, 10, 15, 20]" :gridUrl="route('admin.public-projects')" :listUrl="route('admin.public-projects')" />
+
+
+        <flux:table :paginate="$this->projects">
+            <flux:table.columns>
+                <flux:table.column>{{ __('Titre') }}</flux:table.column>
+                <flux:table.column>{{ __('Catégorie') }}</flux:table.column>
+                <flux:table.column align="center">{{ __('Année') }}</flux:table.column>
+                <flux:table.column align="center">{{ __('Publié') }}</flux:table.column>
+                <flux:table.column align="center">{{ __('Vedette') }}</flux:table.column>
+                <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse($this->projects as $p)
+                    <flux:table.row class="hover:bg-zinc-50">
+                        <flux:table.cell>{{ $p->title }}<div class="text-xs text-zinc-500">{{ $p->slug }}
+                            </div>
+                        </flux:table.cell>
+                        <flux:table.cell>
+                            <flux:badge size="sm">{{ $p->category }}</flux:badge>
+                        </flux:table.cell>
+                        <flux:table.cell align="center">{{ $p->year ?? '—' }}</flux:table.cell>
+                        <flux:table.cell align="center">
+                            @if ($p->is_published)
+                                <flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>
+                            @else
+                                <flux:badge variant="zinc" size="sm">{{ __('Non') }}</flux:badge>
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell align="center">
+                            @if ($p->is_featured)
+                                <flux:badge variant="warning" size="sm">{{ __('Oui') }}</flux:badge>
+                            @else
+                                —
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell align="end">
+                            <div class="flex justify-end gap-1">
+                                @can('update', $p)
+                                    <flux:button variant="ghost" size="sm" icon="pencil-square"
+                                        wire:click="openEdit({{ $p->id }})" />
+                                @endcan
+                                @can('delete', $p)
+                                    <flux:button variant="ghost" size="sm" icon="trash"
+                                        wire:click="delete({{ $p->id }})" wire:confirm="{{ __('Supprimer ?') }}"
+                                        class="text-red-500" />
+                                @endcan
+                            </div>
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell align="center" colspan="6">{{ __('Aucun projet.') }}</flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+    </flux:card>
 
     <flux:modal wire:model="showModal" class="max-w-2xl" @close="closeModal">
         <form wire:submit="save" class="space-y-6">
-            <flux:heading size="lg">{{ $editingId ? __('Modifier le projet') : __('Nouveau projet') }}</flux:heading>
+            <flux:heading size="lg">{{ $editingId ? __('Modifier le projet') : __('Nouveau projet') }}
+            </flux:heading>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <flux:input wire:model="title" :label="__('Titre')" required class="sm:col-span-2" />
                 <flux:input wire:model="slug" :label="__('Slug (auto)')" placeholder="residence-les-palmiers" />
@@ -213,12 +244,17 @@ new #[Title('Réalisations')] class extends Component {
                 <flux:input wire:model="client_name" :label="__('Client')" />
                 <flux:input wire:model="location" :label="__('Localisation')" />
                 <flux:input wire:model="year" type="number" :label="__('Année')" />
-                <flux:input type="file" wire:model="cover_image_upload" :label="__('Ou fichier image')" accept="image/*" />
+                <flux:input type="file" wire:model="cover_image_upload" :label="__('Ou fichier image')"
+                    accept="image/*" />
                 <flux:input wire:model="meta_title" :label="__('Meta titre')" placeholder="SEO" />
                 <flux:input wire:model="meta_description" :label="__('Meta description')" />
                 <flux:input wire:model="cover_image" :label="__('Image couverture URL')" class="sm:col-span-2" />
-                <div class="sm:col-span-2 -mt-2"><a href="{{ route('admin.media') }}" target="_blank" class="text-xs text-zinc-500 underline hover:text-zinc-700">{{ __('Ouvrir la médiathèque') }} →</a></div>
-                <div class="sm:col-span-2"><flux:textarea wire:model="description" :label="__('Description')" rows="3" /></div>
+                <div class="sm:col-span-2 -mt-2"><a href="{{ route('admin.media') }}" target="_blank"
+                        class="text-xs text-zinc-500 underline hover:text-zinc-700">{{ __('Ouvrir la médiathèque') }}
+                        →</a></div>
+                <div class="sm:col-span-2">
+                    <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
+                </div>
                 <flux:input wire:model="published_at" type="date" :label="__('Date publication')" />
                 <div class="flex flex-col gap-2">
                     <flux:checkbox wire:model="is_published" :label="__('Publié (CDC 9.2)')" />
@@ -226,8 +262,10 @@ new #[Title('Réalisations')] class extends Component {
                 </div>
             </div>
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="closeModal" type="button">{{ __('Annuler') }}</flux:button>
-                <flux:button variant="primary" type="submit">{{ $editingId ? __('Mettre à jour') : __('Créer') }}</flux:button>
+                <flux:button variant="ghost" wire:click="closeModal" type="button">{{ __('Annuler') }}
+                </flux:button>
+                <flux:button variant="primary" type="submit">
+                    {{ $editingId ? __('Mettre à jour') : __('Créer') }}</flux:button>
             </div>
         </form>
     </flux:modal>

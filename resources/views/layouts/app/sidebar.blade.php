@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
     @include('partials.head')
 </head>
 
-<body class="min-h-screen bg-white dark:bg-zinc-800">
+<body class="min-h-screen bg-white">
     <flux:sidebar sticky collapsible="mobile"
-        class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-        <flux:sidebar.header>
+        class="bg-[#111c43]! border-e border-white/10! text-[#a3aed1] [--ynex-primary:#845adf] [--ynex-primary-hover:#7a4fd6]"
+        data-menu-styles="dark" data-nav-layout="vertical" data-vertical-style="overlay">
+
+        <flux:sidebar.header class="border-b border-white/10 h-16! justify-between! lg:justify-center!">
             <x-app-logo :sidebar="true" href="{{ route('admin.dashboard') }}" wire:navigate />
-            <flux:sidebar.collapse class="lg:hidden" />
+
+            <flux:sidebar.collapse class="lg:hidden text-white/70 hover:text-white hover:bg-white/10" />
         </flux:sidebar.header>
 
-        <div data-simplebar class="px-4 h-[calc(100vh-((--spacing(16))+(--spacing(12))))]!">
+        <div data-simplebar class="min-h-0 h-[calc(100vh-((--spacing(16))+(--spacing(12))))]! px-3 py-2">
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('Platform')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('admin.dashboard')"
@@ -113,11 +116,12 @@
                 @endcan
             </flux:sidebar.nav>
 
-            <flux:spacer />
+            <flux:spacer class="hidden" />
         </div>
 
-
-        <x-desktop-user-menu class=" hidden lg:block" :name="auth()->user()->name" />
+        <div class="hidden lg:block border-t border-white/10 bg-[#111c43] p-3">
+            <x-desktop-user-menu :name="auth()->user()->name" />
+        </div>
     </flux:sidebar>
 
     <!-- Mobile User Menu -->

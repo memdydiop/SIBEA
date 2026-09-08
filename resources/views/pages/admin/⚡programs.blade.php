@@ -40,9 +40,22 @@ new #[Title('Programmes')] class extends Component {
     public ?int $editingId = null;
     public bool $showModal = false;
     public string $search = '';
+    public string $sortBy = 'order';
+    public string $sortDirection = 'asc';
     public ?int $expandedProgramId = null;
+    public bool $showLotsListModal = false;
 
-    // Lots inline (gestion depuis Programme) — référence = numéro, max d'infos
+    public function sort(string $column): void
+    {
+        if ($this->sortBy === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $column;
+            $this->sortDirection = 'asc';
+        }
+    }
+
+    // Lots (gestion depuis Programme) — modal uniquement, pas d'inline
     public ?int $lotEditingId = null;
     public bool $showLotModal = false;
     public ?int $lot_program_id = null;
@@ -66,9 +79,7 @@ new #[Title('Programmes')] class extends Component {
     #[Computed]
     public function programs()
     {
-        return Program::when($this->search, fn ($q) => $q->where('title', 'ilike', "%{$this->search}%")->orWhere('slug', 'ilike', "%{$this->search}%"))
-            ->orderBy('order')
-            ->paginate(15);
+        return Program::withCount('lots')->when($this->search, fn($q) => $q->where('title', 'ilike', "%{$this->search}%")->orWhere('slug', 'ilike', "%{$this->search}%"))->tap(fn($q) => $this->sortBy ? $q->orderBy($this->sortBy, $this->sortDirection) : $q)->paginate(15);
     }
 
     #[Computed]
@@ -80,24 +91,36 @@ new #[Title('Programmes')] class extends Component {
     #[Computed]
     public function expandedLots()
     {
-        if (! $this->expandedProgramId) {
+        if (!$this->expandedProgramId) {
             return collect();
         }
 
         return ProgramLot::where('program_id', $this->expandedProgramId)->orderByDesc('id')->get();
     }
 
+    public function openLotsList(int $programId): void
+    {
+        $this->expandedProgramId = $programId;
+        $this->showLotsListModal = true;
+        unset($this->expandedProgram, $this->expandedLots);
+    }
+
+    public function closeLotsListModal(): void
+    {
+        $this->showLotsListModal = false;
+        // keep expandedProgramId for potential reopen, or reset
+    }
+
     public function toggleLots(int $programId): void
     {
-        $this->expandedProgramId = $this->expandedProgramId === $programId ? null : $programId;
-        unset($this->expandedProgram, $this->expandedLots);
+        $this->openLotsList($programId);
     }
 
     public function openCreateLot(?int $programId = null): void
     {
         Gate::authorize('create', ProgramLot::class);
         $this->reset(['lot_reference', 'lot_surface', 'lot_price', 'lot_is_viabilise', 'lot_juridical_status', 'lot_plan_pdf_path', 'lot_plan_pdf_upload', 'lot_latitude', 'lot_longitude', 'lot_published_at', 'lotEditingId']);
-        $this->lot_program_id = $programId ?? $this->expandedProgramId ?? $this->programs()->first()?->id;
+        $this->lot_program_id = $programId ?? ($this->expandedProgramId ?? $this->programs()->first()?->id);
         $this->lot_status = 'disponible';
         $this->lot_is_viabilise = true;
         $this->lot_published_at = now()->format('Y-m-d');
@@ -128,10 +151,10 @@ new #[Title('Programmes')] class extends Component {
         if ($this->lot_plan_pdf_upload) {
             Validator::make(['plan_pdf_upload' => $this->lot_plan_pdf_upload], ['plan_pdf_upload' => ['file', 'mimes:pdf', 'max:5120']])->validate();
             $path = $this->lot_plan_pdf_upload->store('cms/plots', 'public');
-            $this->lot_plan_pdf_path = '/storage/'.$path;
+            $this->lot_plan_pdf_path = '/storage/' . $path;
         }
         if ($this->lot_plan_pdf_path && str_starts_with($this->lot_plan_pdf_path, 'cms/')) {
-            $this->lot_plan_pdf_path = '/storage/'.$this->lot_plan_pdf_path;
+            $this->lot_plan_pdf_path = '/storage/' . $this->lot_plan_pdf_path;
         }
 
         $data = [
@@ -236,17 +259,14 @@ new #[Title('Programmes')] class extends Component {
     public function save(CreateProgramAction $create, UpdateProgramAction $update, LogAuditAction $audit): void
     {
         if ($this->cover_image_upload) {
-            Validator::make(
-                ['cover_image_upload' => $this->cover_image_upload],
-                ['cover_image_upload' => ['image', 'mimes:jpeg,png,webp,svg', 'max:2048', 'dimensions:max_width=4000,max_height=4000']],
-            )->validate();
+            Validator::make(['cover_image_upload' => $this->cover_image_upload], ['cover_image_upload' => ['image', 'mimes:jpeg,png,webp,svg', 'max:2048', 'dimensions:max_width=4000,max_height=4000']])->validate();
 
             $path = $this->cover_image_upload->store('cms/programs', 'public');
-            $this->cover_path = '/storage/'.$path;
+            $this->cover_path = '/storage/' . $path;
         }
 
         if ($this->cover_path && str_starts_with($this->cover_path, 'cms/')) {
-            $this->cover_path = '/storage/'.$this->cover_path;
+            $this->cover_path = '/storage/' . $this->cover_path;
         }
 
         $data = [
@@ -314,236 +334,263 @@ new #[Title('Programmes')] class extends Component {
         $totalLotsGlobalCount = \App\Models\ProgramLot::count();
     @endphp
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm p-4">
-            <div class="text-xs font-medium uppercase tracking-wide text-zinc-500">{{ __('Total') }}</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <span class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ $totalProgramsCount }}</span>
-                <span class="text-sm text-zinc-500">{{ __('programmes') }}</span>
-            </div>
-            <div class="mt-1 text-xs text-zinc-400">{{ __('Tous programmes confondus') }}</div>
-        </div>
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm p-4">
-            <div class="text-xs font-medium uppercase tracking-wide text-zinc-500">{{ __('Publiés') }}</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <span class="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{{ $publishedProgramsCount }}</span>
-                <span class="text-sm text-zinc-500">/ {{ $totalProgramsCount }}</span>
-            </div>
-            <div class="mt-1 text-xs text-zinc-400">{{ __('Visibles vitrine') }}</div>
-        </div>
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm p-4">
-            <div class="text-xs font-medium uppercase tracking-wide text-zinc-500">{{ __('Lots') }}</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <span class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ $totalLotsGlobalCount }}</span>
-                <span class="text-sm text-zinc-500">{{ __('lots créés') }}</span>
-            </div>
-            <div class="mt-1 text-xs text-zinc-400">{{ __('Tous programmes') }}</div>
-        </div>
+        <x-stat-widget title="Total" :value="$totalProgramsCount" suffix=" programmes" icon="squares-2x2" trendLabel="Tous programmes confondus" chartId="total-programs-chart" />
+        <x-stat-widget title="Publiés" :value="$publishedProgramsCount" :suffix="' / ' . $totalProgramsCount" icon="check-circle" :trend="$totalProgramsCount > 0 ? round($publishedProgramsCount / $totalProgramsCount * 100, 1) . '%' : '0%'" :trendUp="true" trendLabel="Visibles vitrine" chartId="published-programs-chart" />
+        <x-stat-widget title="Lots" :value="$totalLotsGlobalCount" suffix=" lots" icon="map" trendLabel="Tous programmes" chartId="lots-chart" />
     </div>
+    
+    <flux:card class="">
+        <x-card-header title="Programmes" subtitle="Gestion programmes — SIBEA">
+            <x-slot:actions>
+                @can('create', App\Models\Program::class)
+                    <flux:button variant="primary" size="sm" icon="plus" wire:click="openCreate" />
+                @endcan
+            </x-slot:actions>
+        </x-card-header>
 
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <flux:input wire:model.live.debounce.300ms="search" placeholder="{{ __('Rechercher titre ou slug...') }}" class="max-w-sm" />
-        @can('create', App\Models\Program::class)
-            <flux:button variant="primary" icon="plus" wire:click="openCreate">{{ __('Nouveau programme') }}</flux:button>
-        @endcan
-    </div>
+        <x-table-toolbar searchPlaceholder="Search project name..." searchModel="search" statusFilter="statusFilter"
+            :statusOptions="['All' => 'Status', 'published' => 'Publiés', 'draft' => 'Brouillons']" :perPageOptions="[5, 10, 15, 20]"
+            class=" border-b border-zinc-200/70 border-dashed bg-white" />
 
-    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500">
-                    <tr>
-                        <th class="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Visuel') }}</th>
-                        <th class="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Programme') }}</th>
-                        <th class="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Localisation') }}</th>
-                        <th class="text-center px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Ordre') }}</th>
-                        <th class="text-center px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Lots') }}</th>
-                        <th class="text-center px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Publié') }}</th>
-                        <th class="text-right px-4 py-3 font-medium text-xs uppercase tracking-wide">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse($this->programs as $program)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 {{ $expandedProgramId === $program->id ? 'bg-zinc-50 dark:bg-zinc-800/40' : '' }}">
-                            <td class="px-4 py-3">
-                                <div class="h-10 w-14 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center">
-                                    @if($program->cover_path)
-                                        <img src="{{ $program->cover_path }}" alt="{{ $program->title }}" class="h-10 w-14 object-cover">
-                                    @else
-                                        <span class="text-[10px] text-zinc-400">{{ __('—') }}</span>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{{ $program->title }}</div>
-                                <div class="mt-1"><flux:badge size="sm" variant="zinc">{{ $program->slug }}</flux:badge></div>
-                                @if($program->excerpt)
-                                    <div class="mt-1 text-xs text-zinc-500 line-clamp-1 max-w-[220px]">{{ $program->excerpt }}</div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="text-sm text-zinc-900 dark:text-zinc-100">{{ $program->city ?? '—' }}</div>
-                                <div class="text-xs text-zinc-500">
-                                    @if($program->municipality){{ $program->municipality }}@else — @endif
-                                    @if($program->district) • {{ $program->district }}@endif
-                                </div>
-                                @if($program->total_area)
-                                    <div class="text-xs text-zinc-400">{{ number_format((float) $program->total_area, 0, ',', ' ') }} m²</div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-center">
-                                <span class="inline-flex items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">{{ $program->order }}</span>
-                            </td>
-                            <td class="px-4 py-3 text-center">
-                                <div class="inline-flex items-center gap-1.5">
-                                    <flux:badge size="sm" variant="zinc">{{ $program->total_lots }}</flux:badge>
-                                    <flux:button variant="ghost" size="xs" :icon="$expandedProgramId === $program->id ? 'chevron-up' : 'chevron-down'" wire:click="toggleLots({{ $program->id }})" />
-                                </div>
-                            </td>
-                            <td class="px-4 py-3 text-center">
-                                @if($program->is_published)
-                                    <flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>
+
+        <flux:table :paginate="$this->programs">
+            <flux:table.columns>
+                <flux:table.column class="w-px">{{ __('Visuel') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection"
+                    wire:click="sort('title')">{{ __('Programme') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'city'" :direction="$sortDirection"
+                    wire:click="sort('city')">{{ __('Localisation') }}</flux:table.column>
+                <flux:table.column align="center" sortable :sorted="$sortBy === 'order'" :direction="$sortDirection"
+                    wire:click="sort('order')">{{ __('Ordre') }}</flux:table.column>
+                <flux:table.column align="center" sortable :sorted="$sortBy === 'total_lots'"
+                    :direction="$sortDirection" wire:click="sort('total_lots')">{{ __('Lots') }}</flux:table.column>
+                <flux:table.column align="center" sortable :sorted="$sortBy === 'is_published'"
+                    :direction="$sortDirection" wire:click="sort('is_published')">{{ __('Publié') }}
+                </flux:table.column>
+                <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse($this->programs as $program)
+                    <flux:table.row :key="$program->id">
+                        <flux:table.cell>
+                            <div
+                                class="h-10 w-14 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 flex items-center justify-center">
+                                @if ($program->cover_path)
+                                    <img src="{{ $program->cover_path }}" alt="{{ $program->title }}"
+                                        class="h-10 w-14 object-cover">
                                 @else
-                                    <flux:badge variant="zinc" size="sm">{{ __('Non') }}</flux:badge>
+                                    <span class="text-[10px] text-zinc-400">{{ __('—') }}</span>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
-                                    @can('create', App\Models\ProgramLot::class)<flux:button variant="ghost" size="sm" icon="squares-plus" wire:click="openCreateLot({{ $program->id }})" />@endcan
-                                    @can('update', $program)<flux:button variant="ghost" size="sm" icon="pencil-square" wire:click="openEdit({{ $program->id }})" />@endcan
-                                    @can('delete', $program)<flux:button variant="ghost" size="sm" icon="trash" wire:click="delete({{ $program->id }})" wire:confirm="{{ __('Supprimer ?') }}" class="text-red-500" />@endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7" class="px-4 py-10 text-center text-zinc-500">{{ __('Aucun programme.') }}</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 px-4 py-3">
-            <div>{{ $this->programs->links() }}</div>
-            <div class="text-xs text-zinc-500 text-center sm:text-right">{{ __('Cliquez sur le chevron pour gérer les lots du programme sans changer de page.') }}</div>
-        </div>
-    </div>
+                            </div>
+                        </flux:table.cell>
+                        <flux:table.cell>
+                            <div class="font-medium text-zinc-900 leading-tight">{{ $program->title }}</div>                           
+                        </flux:table.cell>
+                        <flux:table.cell>
+                            <div class="flex items-center gap-3">
+                            <div class="text-sm text-zinc-900">{{ $program->city ?? '—' }}</div>
+                            <div class="text-xs text-zinc-500">
+                                @if ($program->municipality)
+                                    {{ $program->municipality }}
+                                @else
+                                    —
+                                @endif
+                                @if ($program->district)
+                                    • {{ $program->district }}
+                                @endif
+                            </div>
+                            </div>
 
-    {{-- Lots intégrés au programme sélectionné --}}
-    @if($expandedProgramId && $this->expandedProgram)
-        <div class="mt-6 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 px-4 py-3">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Lots de') }} {{ $this->expandedProgram->title }}</span>
-                    <flux:badge size="sm" variant="zinc">{{ $this->expandedLots->count() }} / {{ $this->expandedProgram->total_lots }} {{ __('lots') }}</flux:badge>
+                            @if ($program->total_area)
+                                <div class="text-xs text-zinc-400">
+                                    {{ number_format((float) $program->total_area, 0, ',', ' ') }} m²</div>
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell align="center">
+                            <span
+                                class="inline-flex items-center justify-center rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">{{ $program->order }}</span>
+                        </flux:table.cell>
+                        <flux:table.cell align="center">
+                            <div class="inline-flex items-center gap-1.5">
+                                <flux:badge size="sm" variant="zinc">{{ $program->total_lots }}</flux:badge>
+                                <flux:button variant="ghost" size="xs"
+                                    :icon="$expandedProgramId === $program->id ? 'chevron-up' : 'chevron-down'"
+                                    wire:click="openLotsList({{ $program->id }})" />
+                            </div>
+                        </flux:table.cell>
+                        <flux:table.cell align="center">
+                            @if ($program->is_published)
+                                <flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>
+                            @else
+                                <flux:badge variant="zinc" size="sm">{{ __('Non') }}</flux:badge>
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell align="end">
+                            <div class="flex justify-end gap-1">
+                                @can('create', App\Models\ProgramLot::class)
+                                    <flux:button variant="filled" size="xs" icon="squares-plus"
+                                        wire:click="openCreateLot({{ $program->id }})" />
+                                @endcan
+                                @can('update', $program)
+                                    <flux:button variant="filled" size="xs" icon="pencil-square"
+                                        wire:click="openEdit({{ $program->id }})" />
+                                @endcan
+                                @can('delete', $program)
+                                    <flux:button variant="filled" size="xs" icon="trash"
+                                        wire:click="delete({{ $program->id }})" wire:confirm="{{ __('Supprimer ?') }}"
+                                        class="text-red-500" />
+                                @endcan
+                            </div>
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell align="center" colspan="7">{{ __('Aucun programme.') }}</flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+    </flux:card>
+
+    <flux:modal wire:model="showLotsListModal" class="max-w-5xl" @close="closeLotsListModal">
+        @if($this->expandedProgram)
+            <div class="space-y-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <flux:heading size="lg">{{ __('Lots de') }} {{ $this->expandedProgram->title }}</flux:heading>
+                        <flux:text class="mt-1">
+                            <flux:badge size="sm" variant="zinc">{{ $this->expandedLots->count() }} / {{ $this->expandedProgram->total_lots }} {{ __('lots') }}</flux:badge>
+                            <span class="ml-2 text-xs text-zinc-500">{{ $this->expandedProgram->city ?? '' }} @if($this->expandedProgram->municipality) • {{ $this->expandedProgram->municipality }}@endif</span>
+                        </flux:text>
+                    </div>
+                    @can('create', App\Models\ProgramLot::class)
+                        <flux:button variant="primary" size="sm" icon="plus" wire:click="openCreateLot({{ $this->expandedProgram->id }})">{{ __('Nouveau lot') }}</flux:button>
+                    @endcan
                 </div>
-                <div class="flex gap-2">
-                    @can('create', App\Models\ProgramLot::class)<flux:button variant="primary" size="sm" icon="plus" wire:click="openCreateLot({{ $this->expandedProgram->id }})">{{ __('Nouveau lot') }}</flux:button>@endcan
-                    <flux:button variant="ghost" size="sm" icon="x-mark" wire:click="$set('expandedProgramId', null)">{{ __('Fermer') }}</flux:button>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-white dark:bg-zinc-900 text-zinc-500 border-b border-zinc-100 dark:border-zinc-800">
-                        <tr>
-                            <th class="text-left px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Référence') }}</th>
-                            <th class="text-right px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Surface') }}</th>
-                            <th class="text-right px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Prix') }}</th>
-                            <th class="text-center px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Statut') }}</th>
-                            <th class="text-center px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Viabilisé') }}</th>
-                            <th class="text-left px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Juridique') }}</th>
-                            <th class="text-left px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('GPS') }}</th>
-                            <th class="text-right px-4 py-2.5 font-medium text-xs uppercase tracking-wide">{{ __('Actions') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Référence') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Surface') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Prix') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Statut') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Viabilisé') }}</flux:table.column>
+                        <flux:table.column>{{ __('Juridique') }}</flux:table.column>
+                        <flux:table.column>{{ __('GPS') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
                         @forelse($this->expandedLots as $lot)
-                            <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                                <td class="px-4 py-2.5 font-mono text-xs font-medium">{{ $lot->reference }}</td>
-                                <td class="px-4 py-2.5 text-right text-xs">{{ $lot->surface !== null ? number_format((float) $lot->surface, 2, ',', ' ') : '—' }}</td>
-                                <td class="px-4 py-2.5 text-right text-xs">{{ $lot->price !== null ? number_format((float) $lot->price, 2, ',', ' ').' FCFA' : '—' }}</td>
-                                <td class="px-4 py-2.5 text-center">
+                            <flux:table.row>
+                                <flux:table.cell variant="strong">{{ $lot->reference }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ $lot->surface !== null ? number_format((float) $lot->surface, 2, ',', ' ') : '—' }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ $lot->price !== null ? number_format((float) $lot->price, 2, ',', ' ') . ' FCFA' : '—' }}</flux:table.cell>
+                                <flux:table.cell align="center">
                                     @php $ls = $lot->status instanceof \BackedEnum ? $lot->status->value : $lot->status; @endphp
                                     @if($ls === 'disponible')<flux:badge variant="success" size="sm">{{ __('disponible') }}</flux:badge>
                                     @elseif($ls === 'reserve')<flux:badge variant="warning" size="sm">{{ __('réservé') }}</flux:badge>
                                     @elseif($ls === 'vendu')<flux:badge variant="danger" size="sm">{{ __('vendu') }}</flux:badge>
                                     @elseif($ls === 'option')<flux:badge variant="warning" size="sm">{{ __('option') }}</flux:badge>
-                                    @else<flux:badge size="sm">{{ $ls }}</flux:badge>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-2.5 text-center">@if($lot->is_viabilise)<flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>@else<flux:badge variant="zinc" size="sm">{{ __('Non') }}</flux:badge>@endif</td>
-                                <td class="px-4 py-2.5 text-xs">{{ $lot->juridical_status ?? '—' }}</td>
-                                <td class="px-4 py-2.5 text-xs font-mono">@if($lot->latitude && $lot->longitude){{ number_format((float)$lot->latitude,4) }},{{ number_format((float)$lot->longitude,4) }}@else — @endif</td>
-                                <td class="px-4 py-2.5 text-right">
+                                    @else<flux:badge size="sm">{{ $ls }}</flux:badge>@endif
+                                </flux:table.cell>
+                                <flux:table.cell align="center">@if($lot->is_viabilise)<flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>@else<flux:badge variant="zinc" size="sm">{{ __('Non') }}</flux:badge>@endif</flux:table.cell>
+                                <flux:table.cell>{{ $lot->juridical_status ?? '—' }}</flux:table.cell>
+                                <flux:table.cell>@if($lot->latitude && $lot->longitude){{ number_format((float)$lot->latitude,4) }},{{ number_format((float)$lot->longitude,4) }}@else — @endif</flux:table.cell>
+                                <flux:table.cell align="end">
                                     <div class="flex justify-end gap-1">
-                                        @if($lot->plan_pdf_path)<a href="{{ $lot->plan_pdf_path }}" target="_blank" class="text-xs underline text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">PDF</a>@endif
+                                        @if($lot->plan_pdf_path)<a href="{{ $lot->plan_pdf_path }}" target="_blank" class="text-xs underline text-zinc-600 hover:text-zinc-900">PDF</a>@endif
                                         @can('update', $lot)<flux:button variant="ghost" size="xs" icon="pencil-square" wire:click="openEditLot({{ $lot->id }})" />@endcan
                                         @can('delete', $lot)<flux:button variant="ghost" size="xs" icon="trash" wire:click="deleteLot({{ $lot->id }})" wire:confirm="{{ __('Supprimer ?') }}" class="text-red-500" />@endcan
                                     </div>
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @empty
-                            <tr><td colspan="8" class="px-4 py-8 text-center text-zinc-500">{{ __('Aucun lot pour ce programme. Créez le premier.') }}</td></tr>
+                            <flux:table.row><flux:table.cell colspan="8" class="text-center py-8 text-zinc-500">{{ __('Aucun lot pour ce programme. Créez le premier.') }}</flux:table.cell></flux:table.row>
                         @endforelse
-                    </tbody>
-                </table>
+                    </flux:table.rows>
+                </flux:table>
+
+                <div class="flex justify-end">
+                    <flux:button variant="ghost" wire:click="closeLotsListModal">{{ __('Fermer') }}</flux:button>
+                </div>
             </div>
-        </div>
-    @endif
+        @endif
+    </flux:modal>
 
     <flux:modal wire:model="showModal" class="max-w-2xl" @close="closeModal">
         <form wire:submit="save" class="space-y-6">
-            <flux:heading size="lg">{{ $editingId ? __('Modifier le programme') : __('Nouveau programme') }}</flux:heading>
+            <flux:heading size="lg">{{ $editingId ? __('Modifier le programme') : __('Nouveau programme') }}
+            </flux:heading>
 
             {{-- Identité --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
                 <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Identité') }}</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <flux:input wire:model="title" :label="__('Titre')" required class="sm:col-span-2" />
-                    <flux:input wire:model="slug" :label="__('Slug (auto si vide)')" placeholder="les-jardins-de-cocody" />
+                    <flux:input wire:model="slug" :label="__('Slug (auto si vide)')"
+                        placeholder="les-jardins-de-cocody" />
                     <flux:input wire:model="order" type="number" :label="__('Ordre')" min="0" />
-                    <flux:input wire:model="total_lots" type="number" :label="__('Nombre total de lots')" min="0" />
+                    <flux:input wire:model="total_lots" type="number" :label="__('Nombre total de lots')"
+                        min="0" />
                     <flux:input wire:model="published_at" type="date" :label="__('Date publication')" />
                     <div class="flex flex-col gap-2 justify-end pb-2">
                         <flux:checkbox wire:model="is_published" :label="__('Publié')" />
                     </div>
-                    <div class="sm:col-span-2"><flux:textarea wire:model="excerpt" :label="__('Extrait')" rows="2" placeholder="{{ __('Résumé court pour cartes') }}" /></div>
-                    <div class="sm:col-span-2"><flux:textarea wire:model="description" :label="__('Description')" rows="4" placeholder="{{ __('Contenu détaillé') }}" /></div>
+                    <div class="sm:col-span-2">
+                        <flux:textarea wire:model="excerpt" :label="__('Extrait')" rows="2"
+                            placeholder="{{ __('Résumé court pour cartes') }}" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <flux:textarea wire:model="description" :label="__('Description')" rows="4"
+                            placeholder="{{ __('Contenu détaillé') }}" />
+                    </div>
                 </div>
             </div>
 
             {{-- Localisation --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
-                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Localisation') }}</div>
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
+                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Localisation') }}
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <flux:input wire:model="city" :label="__('Ville')" placeholder="Abidjan" />
                     <flux:input wire:model="municipality" :label="__('Commune')" placeholder="Cocody" />
                     <flux:input wire:model="district" :label="__('Quartier')" placeholder="Riviera Golf" />
-                    <flux:input wire:model="total_area" type="number" step="0.01" :label="__('Surface totale (m²)')" placeholder="25000" />
+                    <flux:input wire:model="total_area" type="number" step="0.01"
+                        :label="__('Surface totale (m²)')" placeholder="25000" />
                 </div>
             </div>
 
             {{-- Média --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
                 <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Média') }}</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <flux:input wire:model="cover_path" :label="__('Image couverture URL')" placeholder="https:// ou /storage/cms/programs/..." class="sm:col-span-2" />
-                    <flux:input type="file" wire:model="cover_image_upload" :label="__('Ou fichier image (jpeg,png,webp,svg max 2Mo)')" accept="image/jpeg,image/png,image/webp,image/svg+xml" />
+                    <flux:input wire:model="cover_path" :label="__('Image couverture URL')"
+                        placeholder="https:// ou /storage/cms/programs/..." class="sm:col-span-2" />
+                    <flux:input type="file" wire:model="cover_image_upload"
+                        :label="__('Ou fichier image (jpeg,png,webp,svg max 2Mo)')"
+                        accept="image/jpeg,image/png,image/webp,image/svg+xml" />
                     <div class="sm:col-span-2 -mt-2 flex items-center gap-2">
-                        <a href="{{ route('admin.media') }}" target="_blank" class="text-xs text-zinc-500 underline hover:text-zinc-700">{{ __('Ouvrir la médiathèque') }} →</a>
+                        <a href="{{ route('admin.media') }}" target="_blank"
+                            class="text-xs text-zinc-500 underline hover:text-zinc-700">{{ __('Ouvrir la médiathèque') }}
+                            →</a>
                         <span class="text-xs text-zinc-400">{{ __('ou uploader ci-dessus') }}</span>
                     </div>
-                    @if($cover_path)
+                    @if ($cover_path)
                         <div class="sm:col-span-2">
                             <div class="text-xs text-zinc-500 mb-2">{{ __('Aperçu :') }}</div>
-                            <img src="{{ $cover_path }}" alt="cover preview" class="h-32 w-full object-cover rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <img src="{{ $cover_path }}" alt="cover preview"
+                                class="h-32 w-full object-cover rounded-lg border border-zinc-200">
                         </div>
                     @endif
-                    @if($cover_image_upload)
-                        <div class="sm:col-span-2 text-xs text-zinc-500">{{ __('Nouveau fichier sélectionné — sera stocké dans cms/programs') }}</div>
+                    @if ($cover_image_upload)
+                        <div class="sm:col-span-2 text-xs text-zinc-500">
+                            {{ __('Nouveau fichier sélectionné — sera stocké dans cms/programs') }}</div>
                     @endif
                 </div>
             </div>
 
             {{-- SEO --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
                 <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('SEO') }}</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <flux:input wire:model="meta_title" :label="__('Meta titre (SEO)')" placeholder="SEO" />
@@ -552,22 +599,29 @@ new #[Title('Programmes')] class extends Component {
             </div>
 
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="closeModal" type="button">{{ __('Annuler') }}</flux:button>
-                <flux:button variant="primary" type="submit">{{ $editingId ? __('Mettre à jour') : __('Créer') }}</flux:button>
+                <flux:button variant="ghost" wire:click="closeModal" type="button">{{ __('Annuler') }}
+                </flux:button>
+                <flux:button variant="primary" type="submit">{{ $editingId ? __('Mettre à jour') : __('Créer') }}
+                </flux:button>
             </div>
         </form>
     </flux:modal>
 
     <flux:modal wire:model="showLotModal" class="max-w-xl" @close="closeLotModal">
         <form wire:submit="saveLot" class="space-y-6">
-            <flux:heading size="lg">{{ $lotEditingId ? __('Modifier le lot') : __('Nouveau lot') }} @if($lot_program_id) <span class="text-sm font-normal text-zinc-500">— {{ Program::find($lot_program_id)?->title }}</span> @endif</flux:heading>
+            <flux:heading size="lg">{{ $lotEditingId ? __('Modifier le lot') : __('Nouveau lot') }} @if ($lot_program_id)
+                    <span class="text-sm font-normal text-zinc-500">—
+                        {{ Program::find($lot_program_id)?->title }}</span>
+                @endif
+            </flux:heading>
 
             {{-- Rattachement --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
-                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Rattachement') }}</div>
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
+                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Rattachement') }}
+                </div>
                 <flux:select wire:model="lot_program_id" :label="__('Programme')" required>
                     <flux:select.option value="">{{ __('Choisir un programme') }}</flux:select.option>
-                    @foreach(\App\Models\Program::orderBy('order')->get() as $prog)
+                    @foreach (\App\Models\Program::orderBy('order')->get() as $prog)
                         <flux:select.option value="{{ $prog->id }}">{{ $prog->title }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -575,38 +629,51 @@ new #[Title('Programmes')] class extends Component {
             </div>
 
             {{-- Caractéristiques --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
-                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Caractéristiques') }}</div>
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
+                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Caractéristiques') }}
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <flux:input wire:model="lot_surface" type="number" step="0.01" min="0" :label="__('Surface (m²)')" />
-                    <flux:input wire:model="lot_price" type="number" step="0.01" min="0" :label="__('Prix (FCFA)')" />
+                    <flux:input wire:model="lot_surface" type="number" step="0.01" min="0"
+                        :label="__('Surface (m²)')" />
+                    <flux:input wire:model="lot_price" type="number" step="0.01" min="0"
+                        :label="__('Prix (FCFA)')" />
                     <flux:select wire:model="lot_status" :label="__('Statut')" required>
                         <flux:select.option value="disponible">{{ __('disponible') }}</flux:select.option>
                         <flux:select.option value="option">{{ __('option') }}</flux:select.option>
                         <flux:select.option value="reserve">{{ __('réservé') }}</flux:select.option>
                         <flux:select.option value="vendu">{{ __('vendu') }}</flux:select.option>
                     </flux:select>
-                    <div class="flex items-end pb-2"><flux:checkbox wire:model="lot_is_viabilise" :label="__('Viabilisé')" /></div>
-                    <flux:input wire:model="lot_juridical_status" :label="__('Statut juridique (ACD)')" placeholder="ACD, TF" />
+                    <div class="flex items-end pb-2">
+                        <flux:checkbox wire:model="lot_is_viabilise" :label="__('Viabilisé')" />
+                    </div>
+                    <flux:input wire:model="lot_juridical_status" :label="__('Statut juridique (ACD)')"
+                        placeholder="ACD, TF" />
                     <flux:input wire:model="lot_published_at" type="date" :label="__('Date publication')" />
                 </div>
             </div>
 
             {{-- Documents & GPS --}}
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20 p-4 space-y-4">
-                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Documents & Localisation') }}</div>
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4">
+                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    {{ __('Documents & Localisation') }}</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <flux:input wire:model="lot_plan_pdf_path" :label="__('Plan PDF URL')" placeholder="/storage/cms/plots/plan.pdf" class="sm:col-span-2" />
-                    <flux:input type="file" wire:model="lot_plan_pdf_upload" :label="__('Ou PDF plan (max 5Mo)')" accept="application/pdf" />
+                    <flux:input wire:model="lot_plan_pdf_path" :label="__('Plan PDF URL')"
+                        placeholder="/storage/cms/plots/plan.pdf" class="sm:col-span-2" />
+                    <flux:input type="file" wire:model="lot_plan_pdf_upload" :label="__('Ou PDF plan (max 5Mo)')"
+                        accept="application/pdf" />
                     <div class="hidden sm:block"></div>
-                    <flux:input wire:model="lot_latitude" type="number" step="0.0000001" :label="__('Latitude')" placeholder="5.3456" />
-                    <flux:input wire:model="lot_longitude" type="number" step="0.0000001" :label="__('Longitude')" placeholder="-4.0123" />
+                    <flux:input wire:model="lot_latitude" type="number" step="0.0000001" :label="__('Latitude')"
+                        placeholder="5.3456" />
+                    <flux:input wire:model="lot_longitude" type="number" step="0.0000001" :label="__('Longitude')"
+                        placeholder="-4.0123" />
                 </div>
             </div>
 
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="closeLotModal" type="button">{{ __('Annuler') }}</flux:button>
-                <flux:button variant="primary" type="submit">{{ $lotEditingId ? __('Mettre à jour') : __('Créer') }}</flux:button>
+                <flux:button variant="ghost" wire:click="closeLotModal" type="button">{{ __('Annuler') }}
+                </flux:button>
+                <flux:button variant="primary" type="submit">
+                    {{ $lotEditingId ? __('Mettre à jour') : __('Créer') }}</flux:button>
             </div>
         </form>
     </flux:modal>

@@ -1,38 +1,75 @@
 <x-layouts.public :title="__('Programmes immobiliers')">
-    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 sm:py-12">
-        <p class="font-display text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">{{ __('Lotissements') }}</p>
-        <h1 class="mt-2 font-display text-[28px] font-bold tracking-tight text-primary-900 sm:text-[36px]">{{ __('Programmes immobiliers') }}</h1>
-        <p class="mt-3 max-w-2xl text-[15px] leading-relaxed text-zinc-600">{{ __('Lotissements viabilisés — terrains et villas disponibles, titres fonciers sécurisés.') }}</p>
+    {{-- Hero CDC — aligné sur réalisations --}}
+    <section class="relative overflow-hidden bg-primary-900 text-white">
+        <div class="absolute inset-0">
+            <div class="h-full w-full bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700"></div>
+            <div class="absolute inset-0 bg-primary-900/70"></div>
+            <div class="absolute inset-0 opacity-[0.04]" style="background-image: linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px); background-size: 40px 40px;"></div>
+        </div>
+        <div class="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 sm:py-16">
+            <p class="font-display text-xs font-semibold uppercase tracking-[0.18em] text-accent">{{ __('Lotissements') }}</p>
+            <h1 class="mt-3 font-display text-[32px] font-extrabold leading-tight sm:text-[40px]">{{ __('Programmes immobiliers') }}</h1>
+            <p class="mt-3 max-w-2xl text-[16px] leading-relaxed text-white/80">{{ __('Lotissements viabilisés — terrains et villas disponibles, titres fonciers sécurisés.') }}</p>
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a href="{{ route('public.quote.create') }}" class="inline-flex items-center rounded-sm bg-accent px-5 py-2.5 text-sm font-display font-semibold text-primary-900 hover:bg-accent-300 transition">{{ __('Demander un devis') }}</a>
+                <a href="{{ route('public.contact') }}" class="inline-flex items-center rounded-sm border border-white/20 bg-transparent px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition">{{ __('Nous contacter') }}</a>
+            </div>
+        </div>
+    </section>
 
-        @if($programs->isEmpty())
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 sm:py-12">
+        @if($cities->isNotEmpty())
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('public.programs.index') }}" class="rounded-full px-3.5 py-1.5 text-sm font-medium transition {{ !$activeCity ? 'bg-primary-900 text-white' : 'border border-border bg-surface text-zinc-700 hover:bg-zinc-50' }}">{{ __('Tous') }}</a>
+                @foreach($cities as $city)
+                    <a href="{{ route('public.programs.index', ['ville' => $city]) }}" class="rounded-full px-3.5 py-1.5 text-sm font-medium transition {{ $activeCity === $city ? 'bg-primary-900 text-white' : 'border border-border bg-surface text-zinc-700 hover:bg-zinc-50' }}">{{ $city }}</a>
+                @endforeach
+            </div>
+        @endif
+
+        @if ($programs->isEmpty())
             <div class="mt-8 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center">
                 <p class="text-sm text-zinc-500">{{ __('Aucun programme disponible pour le moment.') }}</p>
+                <a href="{{ route('home') }}" class="mt-4 inline-flex text-sm font-semibold text-primary-700 hover:text-accent">{{ __('Retour à l’accueil →') }}</a>
             </div>
         @else
-            <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach($programs as $program)
-                    <a href="{{ route('public.programs.show', $program->slug) }}" class="group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white hover:shadow-sm transition">
-                        <div class="aspect-[4/3] bg-zinc-100 overflow-hidden">
-                            @if($program->cover_path)
-                                <img src="{{ $program->cover_path }}" alt="{{ $program->title }}" class="h-full w-full object-cover group-hover:scale-[1.02] transition duration-300">
+            <div class="mt-3 flex items-center justify-between">
+                <p class="text-sm text-zinc-500">{{ $programs->total() }} {{ __('programme(s) trouvé(s)') }}</p>
+            </div>
+
+            <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($programs as $program)
+                    <a href="{{ route('public.programs.show', $program->slug) }}"
+                        class="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgba(11,31,51,0.06)] hover:shadow-md transition">
+                        <div class="aspect-[4/3] bg-neutral-100 overflow-hidden relative">
+                            @if ($program->cover_path)
+                                <img src="{{ $program->cover_path }}" alt="{{ $program->title }}"
+                                    class="h-full w-full object-cover group-hover:scale-[1.03] transition duration-300">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
                             @else
-                                <div class="flex h-full w-full items-center justify-center bg-zinc-100 text-xs font-semibold uppercase tracking-wide text-zinc-400">{{ $program->city ?? __('Lotissement') }}</div>
+                                <div class="h-full w-full bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center">
+                                    <span class="text-white/60 text-xs font-semibold uppercase tracking-wide">{{ $program->city ?? __('Lotissement') }}</span>
+                                </div>
                             @endif
+                            <div class="absolute left-3 top-3 flex gap-1.5">
+                                @if($program->city)<span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-primary-900 backdrop-blur">{{ $program->city }}</span>@endif
+                                @if($program->total_lots)<span class="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-primary-900">{{ $program->total_lots }} {{ __('lots') }}</span>@endif
+                            </div>
                         </div>
-                        <div class="p-4">
-                            <div class="text-xs uppercase tracking-wide text-zinc-500">
-                                {{ $program->city ?? '—' }}
-                                @if($program->municipality) · {{ $program->municipality }}@endif
-                                @if($program->total_lots) · {{ $program->total_lots }} {{ __('lots') }}@endif
+                        <div class="flex flex-1 flex-col p-5">
+                            <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                                @if($program->city)<span>{{ $program->city }}</span>@endif
+                                @if($program->municipality)<span>· {{ Str::limit($program->municipality, 20) }}</span>@endif
                             </div>
-                            <div class="mt-1 font-semibold text-zinc-900 line-clamp-2 group-hover:text-primary-700">{{ $program->title }}</div>
-                            @if($program->excerpt)
-                                <div class="mt-1 line-clamp-2 text-sm text-zinc-600">{{ $program->excerpt }}</div>
+                            <h3 class="mt-2 font-display text-[17px] font-semibold leading-tight text-primary-900 line-clamp-2 group-hover:text-accent transition">{{ $program->title }}</h3>
+                            @if ($program->excerpt)
+                                <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-neutral-600">{{ Str::limit(strip_tags($program->excerpt), 110) }}</p>
                             @endif
-                            <div class="mt-3 text-xs font-medium text-zinc-500">
-                                @if($program->total_area){{ number_format((float)$program->total_area,0,',',' ') }} m² · @endif
-                                @if($program->published_at){{ $program->published_at->format('d/m/Y') }}@endif
+                            <div class="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+                                @if($program->total_area)<span>{{ number_format((float) $program->total_area, 0, ',', ' ') }} m²</span>@endif
+                                @if($program->published_at)<span>· {{ $program->published_at->format('d/m/Y') }}</span>@endif
                             </div>
+                            <div class="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-accent group-hover:text-primary-700">{{ __('Découvrir') }} →</div>
                         </div>
                     </a>
                 @endforeach

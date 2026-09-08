@@ -4,19 +4,15 @@ use Livewire\Component;
 use Livewire\Attributes\Title;
 
 new #[Title('Appearance settings')] class extends Component {
-    //
+ //
 }; ?>
 
 <section class="w-full">
-    @include('partials.settings-heading')
+ @include('partials.settings-heading')
 
-    <flux:heading level="2" class="sr-only">{{ __('Appearance settings') }}</flux:heading>
+ <flux:heading level="2" class="sr-only">{{ __('Appearance settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Appearance')" :subheading="__('Update the appearance settings for your account')">
-        <flux:radio.group x-data variant="segmented" x-model="$flux.appearance">
-            <flux:radio value="light" icon="sun">{{ __('Light') }}</flux:radio>
-            <flux:radio value="dark" icon="moon">{{ __('Dark') }}</flux:radio>
-            <flux:radio value="system" icon="computer-desktop">{{ __('System') }}</flux:radio>
-        </flux:radio.group>
-    </x-pages::settings.layout>
+  <x-pages::settings.layout :heading="__('Appearance')" :subheading="__('Light mode only — dark mode disabled')">
+  <flux:callout variant="info" icon="information-circle">{{ __('Le mode sombre a été désactivé. L’application reste en thème clair.') }}</flux:callout>
+  </x-pages::settings.layout>
 </section>

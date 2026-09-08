@@ -29,6 +29,19 @@ new #[Title('Services')] class extends Component {
     public ?int $editingId = null;
     public bool $showModal = false;
     public string $search = '';
+    public string $sortBy = 'order';
+    public string $sortDirection = 'asc';
+    public string $statusFilter = '';
+
+    public function sort(string $column): void
+    {
+        if ($this->sortBy === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $column;
+            $this->sortDirection = 'asc';
+        }
+    }
 
     public function mount(): void
     {
@@ -39,8 +52,10 @@ new #[Title('Services')] class extends Component {
     public function services()
     {
         return Service::with('expertise')
-            ->when($this->search, fn ($q) => $q->where('title', 'ilike', "%{$this->search}%"))
-            ->orderBy('order')
+            ->when($this->search, fn($q) => $q->where('title', 'ilike', "%{$this->search}%"))
+            ->when($this->statusFilter === 'active', fn($q) => $q->where('is_active', true))
+            ->when($this->statusFilter === 'inactive', fn($q) => $q->where('is_active', false))
+            ->tap(fn($q) => $this->sortBy ? $q->orderBy($this->sortBy, $this->sortDirection) : $q)
             ->paginate(15);
     }
 
@@ -132,56 +147,92 @@ new #[Title('Services')] class extends Component {
 <section class="w-full">
     <flux:heading size="xl" level="1">{{ __('Services') }}</flux:heading>
     <flux:subheading class="mb-6">{{ __('Services liés aux expertises') }}</flux:subheading>
-
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <flux:input wire:model.live.debounce.300ms="search" placeholder="{{ __('Rechercher...') }}" class="max-w-sm" />
-        @can('create', App\Models\Service::class)
-            <flux:button variant="primary" icon="plus" wire:click="openCreate">{{ __('Nouveau service') }}</flux:button>
-        @endcan
+    @php
+        $totalServices = \App\Models\Service::count();
+        $activeServices = \App\Models\Service::where('is_active', true)->count();
+        $totalExpertises = \App\Models\Expertise::count();
+    @endphp
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <x-stat-widget title="Total" :value="$totalServices" suffix=" services" icon="wrench-screwdriver"
+            trendLabel="Tous services" />
+        <x-stat-widget title="Actifs" :value="$activeServices" :suffix="' / ' . $totalServices" icon="check-circle" :trend="$totalServices > 0 ? round(($activeServices / $totalServices) * 100, 1) . '%' : '0%'"
+            :trendUp="true" trendLabel="Visibles vitrine" />
+        <x-stat-widget title="Expertises" :value="$totalExpertises" suffix=" expertises" icon="academic-cap"
+            trendLabel="Liées" />
     </div>
 
-    <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500">
-                    <tr>
-                        <th class="text-left px-4 py-3">{{ __('Titre') }}</th>
-                        <th class="text-left px-4 py-3">{{ __('Expertise') }}</th>
-                        <th class="text-left px-4 py-3">{{ __('Slug') }}</th>
-                        <th class="text-center px-4 py-3">{{ __('Actif') }}</th>
-                        <th class="text-right px-4 py-3">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse($this->services as $s)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                            <td class="px-4 py-3 font-medium">{{ $s->title }}</td>
-                            <td class="px-4 py-3">{{ $s->expertise?->title ?? '—' }}</td>
-                            <td class="px-4 py-3"><flux:badge size="sm">{{ $s->slug }}</flux:badge></td>
-                            <td class="px-4 py-3 text-center">@if($s->is_active)<flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>@else<flux:badge variant="danger" size="sm">{{ __('Non') }}</flux:badge>@endif</td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
-                                    @can('update', $s)<flux:button variant="ghost" size="sm" icon="pencil-square" wire:click="openEdit({{ $s->id }})" />@endcan
-                                    @can('delete', $s)<flux:button variant="ghost" size="sm" icon="trash" wire:click="delete({{ $s->id }})" wire:confirm="{{ __('Supprimer ?') }}" class="text-red-500" />@endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">{{ __('Aucun service.') }}</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="p-4 border-t">{{ $this->services->links() }}</div>
-    </div>
+    <flux:card class="!p-0 overflow-hidden">
+        <x-card-header title="Services" subtitle="Services liés aux expertises">
+            <x-slot:actions>
+                @can('create', App\Models\Service::class)
+                    <flux:button variant="primary" size="sm" icon="plus" wire:click="openCreate">
+                        {{ __('Nouveau service') }}</flux:button>
+                @endcan
+            </x-slot:actions>
+        </x-card-header>
+
+        <x-table-toolbar searchPlaceholder="Search service..." searchModel="search" statusFilter="statusFilter"
+            :statusOptions="['All' => 'Status', 'active' => 'Actifs', 'inactive' => 'Inactifs']" :perPageOptions="[5, 10, 15, 20]" :gridUrl="route('admin.services')" :listUrl="route('admin.services')" />
+
+        <flux:table :paginate="$this->services">
+            <flux:table.columns>
+                <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection"
+                    wire:click="sort('title')">{{ __('Titre') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'expertise_id'" :direction="$sortDirection"
+                    wire:click="sort('expertise_id')">{{ __('Expertise') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'slug'" :direction="$sortDirection"
+                    wire:click="sort('slug')">{{ __('Slug') }}</flux:table.column>
+                <flux:table.column align="center" sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection"
+                    wire:click="sort('is_active')">{{ __('Actif') }}
+                </flux:table.column>
+                <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse($this->services as $s)
+                    <flux:table.row class="hover:bg-zinc-50">
+                        <flux:table.cell>{{ $s->title }}</flux:table.cell>
+                        <flux:table.cell>{{ $s->expertise?->title ?? '—' }}</flux:table.cell>
+                        <flux:table.cell>
+                            <flux:badge size="sm">{{ $s->slug }}</flux:badge>
+                        </flux:table.cell>
+                        <flux:table.cell align="center">
+                            @if ($s->is_active)
+                                <flux:badge variant="success" size="sm">{{ __('Oui') }}</flux:badge>
+                            @else
+                                <flux:badge variant="danger" size="sm">{{ __('Non') }}</flux:badge>
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell align="end">
+                            <div class="flex justify-end gap-1">
+                                @can('update', $s)
+                                    <flux:button variant="ghost" size="sm" icon="pencil-square"
+                                        wire:click="openEdit({{ $s->id }})" />
+                                @endcan
+                                @can('delete', $s)
+                                    <flux:button variant="ghost" size="sm" icon="trash"
+                                        wire:click="delete({{ $s->id }})" wire:confirm="{{ __('Supprimer ?') }}"
+                                        class="text-red-500" />
+                                @endcan
+                            </div>
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell align="center" colspan="5">{{ __('Aucun service.') }}</flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+    </flux:card>
 
     <flux:modal wire:model="showModal" class="max-w-2xl" @close="closeModal">
         <form wire:submit="save" class="space-y-6">
-            <flux:heading size="lg">{{ $editingId ? __('Modifier le service') : __('Nouveau service') }}</flux:heading>
+            <flux:heading size="lg">{{ $editingId ? __('Modifier le service') : __('Nouveau service') }}
+            </flux:heading>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <flux:select wire:model="expertise_id" :label="__('Expertise')">
                     <flux:select.option value="">{{ __('Aucune') }}</flux:select.option>
-                    @foreach($this->expertises as $exp)
+                    @foreach ($this->expertises as $exp)
                         <flux:select.option value="{{ $exp->id }}">{{ $exp->title }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -190,14 +241,19 @@ new #[Title('Services')] class extends Component {
                 <flux:input wire:model="slug" :label="__('Slug (auto)')" placeholder="gros-oeuvre" />
                 <flux:input wire:model="icon" :label="__('Icône')" />
                 <flux:checkbox wire:model="is_active" :label="__('Actif')" />
-                <div class="sm:col-span-2"><flux:input wire:model="meta_title" :label="__('Meta titre')" />
-                <flux:input wire:model="meta_description" :label="__('Meta description')" />
-                <flux:textarea wire:model="excerpt" :label="__('Extrait')" rows="2" /></div>
-                <div class="sm:col-span-2"><flux:textarea wire:model="content" :label="__('Contenu')" rows="4" /></div>
+                <div class="sm:col-span-2">
+                    <flux:input wire:model="meta_title" :label="__('Meta titre')" />
+                    <flux:input wire:model="meta_description" :label="__('Meta description')" />
+                    <flux:textarea wire:model="excerpt" :label="__('Extrait')" rows="2" />
+                </div>
+                <div class="sm:col-span-2">
+                    <flux:textarea wire:model="content" :label="__('Contenu')" rows="4" />
+                </div>
             </div>
             <div class="flex justify-end gap-2">
                 <flux:button variant="ghost" wire:click="closeModal" type="button">{{ __('Annuler') }}</flux:button>
-                <flux:button variant="primary" type="submit">{{ $editingId ? __('Mettre à jour') : __('Créer') }}</flux:button>
+                <flux:button variant="primary" type="submit">{{ $editingId ? __('Mettre à jour') : __('Créer') }}
+                </flux:button>
             </div>
         </form>
     </flux:modal>
