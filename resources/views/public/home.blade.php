@@ -98,7 +98,7 @@
                         <div class="flex items-center gap-1.5">
                             <button @click="prev()" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition" aria-label="{{ __('Précédent') }}">‹</button>
                             <button @click="next()" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition" aria-label="{{ __('Suivant') }}">›</button>
-                            <button @click="toggle()" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition" :aria-label="playing ? __('Pause') : __('Lecture')">
+                            <button @click="toggle()" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition" :aria-label="playing ? '{{ __('Pause') }}' : '{{ __('Lecture') }}'">
                                 <span x-show="playing" class="text-[11px] leading-none" aria-hidden="true">❚❚</span>
                                 <span x-show="!playing" class="text-[11px] leading-none translate-x-px" aria-hidden="true">▶</span>
                             </button>
