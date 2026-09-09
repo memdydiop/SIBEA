@@ -30,24 +30,26 @@
 
  <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
  @foreach($expertises as $exp)
- <a href="{{ route('public.expertises.show', $exp->slug) }}" class="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgba(11,31,51,0.06)] hover:shadow-md transition">
+ <a href="{{ route('public.expertises.show', $exp->slug) }}" class="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_8px_30px_rgba(11,31,51,0.06)] hover:shadow-[0_16px_40px_rgba(11,31,51,0.12)] hover:-translate-y-1 transition-all">
+ <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-900 via-accent to-primary-700 opacity-0 group-hover:opacity-100 transition"></div>
  <div class="aspect-[4/3] overflow-hidden relative bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center">
  @if(!empty($exp->cover_image ?? null))
- <img src="{{ $exp->cover_image }}" alt="{{ $exp->title }}" class="h-full w-full object-cover group-hover:scale-[1.03] transition duration-300">
+ <img src="{{ $exp->cover_image }}" alt="{{ $exp->title }}" class="h-full w-full object-cover group-hover:scale-[1.05] transition duration-500">
  <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
  @else
  <span class="font-display text-5xl font-extrabold text-white/20">{{ Str::upper(Str::substr($exp->title, 0, 2)) }}</span>
  @endif
  <div class="absolute left-3 top-3 flex gap-1.5">
- <span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-primary-900 backdrop-blur">{{ $exp->services_count }} {{ __('services') }}</span>
+ <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-primary-900 shadow-sm">{{ $exp->services_count }} {{ __('services') }}</span>
  </div>
+ <div class="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary-900 opacity-0 shadow-sm group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all">→</div>
  </div>
  <div class="flex flex-1 flex-col p-5">
- <h3 class="font-display text-[17px] font-semibold leading-tight text-primary-900 line-clamp-2 group-hover:text-accent transition">{{ $exp->title }}</h3>
+ <h3 class="font-display text-[17px] font-bold leading-tight text-primary-900 line-clamp-2 group-hover:text-primary-700 transition">{{ $exp->title }}</h3>
  @if($exp->excerpt)
  <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-neutral-600">{{ $exp->excerpt }}</p>
  @endif
- <div class="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-accent group-hover:text-primary-700">{{ __('Découvrir') }} →</div>
+ <div class="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-accent group-hover:gap-2 transition-all">{{ __('Découvrir') }} <span>→</span></div>
  </div>
  </a>
  @endforeach

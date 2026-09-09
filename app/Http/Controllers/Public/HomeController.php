@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Data\HomepageData;
 use App\Http\Controllers\Controller;
 use App\Models\Expertise;
 use App\Models\Partner;
 use App\Models\Post;
 use App\Models\PublicProject;
-use App\Models\SiteSetting;
 use App\Models\Testimonial;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
@@ -16,99 +16,144 @@ class HomeController extends Controller
 {
     public function __invoke(): View
     {
-        // NOTE: on ne cache QUE des scalaires/tableaux primitifs.
-        // Cacher des Collections/Models Eloquent avec CACHE_STORE=database et
-        // cache.serializable_classes=false produit des __PHP_Incomplete_Class
-        // et fait échouer la vue avec "Attempt to read property 'slug' on string"
-        // (foreach sur Collection incomplète itère sur ses propriétés internes).
         $cacheKey = 'home:vitrine:settings:v2';
 
-        $settings = Cache::remember($cacheKey, 300, fn (): array => [
-            'heroTitle' => SiteSetting::get('hero_title', 'Bâtir l’avenir avec excellence'),
-            'heroSubtitle' => SiteSetting::get('hero_subtitle', 'Entreprise BTP de référence — Bâtiment, Génie civil, VRD, Énergie depuis plus de 20 ans.'),
-            'heroImage' => SiteSetting::get('hero_image'),
-            'heroEyebrow' => SiteSetting::get('hero_eyebrow', 'BTP · Génie civil · VRD · Énergie'),
-            'heroCtaLabel' => SiteSetting::get('hero_cta_label', 'Demander un devis'),
-            'heroCtaUrl' => SiteSetting::get('hero_cta_url', '/devis'),
-            'heroSlide2Eyebrow' => SiteSetting::get('hero_slide2_eyebrow', 'Programmes immobiliers'),
-            'heroSlide2Title' => SiteSetting::get('hero_slide2_title', 'Lotissements viabilisés, titres sécurisés'),
-            'heroSlide2Subtitle' => SiteSetting::get('hero_slide2_subtitle', 'Terrains et villas disponibles — viabilisation complète, voirie, assainissement, titres fonciers sécurisés.'),
-            'heroSlide2Image' => SiteSetting::get('hero_slide2_image'),
-            'heroSlide2CtaLabel' => SiteSetting::get('hero_slide2_cta_label', 'Découvrir les programmes'),
-            'heroSlide2CtaUrl' => SiteSetting::get('hero_slide2_cta_url', '/programmes'),
-            'heroSlide2SecondaryLabel' => SiteSetting::get('hero_slide2_secondary_label', 'Demander un devis'),
-            'heroSlide2SecondaryUrl' => SiteSetting::get('hero_slide2_secondary_url', '/devis'),
-            'heroSlide3Eyebrow' => SiteSetting::get('hero_slide3_eyebrow', 'Savoir-faire SIBEA'),
-            'heroSlide3Title' => SiteSetting::get('hero_slide3_title', 'Infrastructures durables, chantiers maîtrisés'),
-            'heroSlide3Subtitle' => SiteSetting::get('hero_slide3_subtitle', 'De l’étude à la réception : bâtiment, VRD, génie civil, énergie — qualité, sécurité, délais tenus.'),
-            'heroSlide3Image' => SiteSetting::get('hero_slide3_image'),
-            'heroSlide3CtaLabel' => SiteSetting::get('hero_slide3_cta_label', 'Nos réalisations'),
-            'heroSlide3CtaUrl' => SiteSetting::get('hero_slide3_cta_url', '/realisations'),
-            'heroSlide3SecondaryLabel' => SiteSetting::get('hero_slide3_secondary_label', 'Nous contacter'),
-            'heroSlide3SecondaryUrl' => SiteSetting::get('hero_slide3_secondary_url', '/contact'),
-            'statsProjectsLabel' => SiteSetting::get('stats_projects_label', 'Projets livrés'),
-            'statsExpertisesLabel' => SiteSetting::get('stats_expertises_label', 'Expertises'),
-            'statsPartnersLabel' => SiteSetting::get('stats_partners_label', 'Partenaires'),
-            'aboutTitle' => SiteSetting::get('about_title', 'À propos de SIBEA'),
-            'aboutContent' => SiteSetting::get('about_content'),
-            'seoTitle' => SiteSetting::get('seo_title'),
-            'seoDescription' => SiteSetting::get('seo_description'),
-            'stats' => [
+        $settings = Cache::remember($cacheKey, 300, function (): array {
+            $data = HomepageData::fromSettings();
+
+            $data['stats'] = [
                 'projects' => PublicProject::where('is_published', true)->count(),
                 'expertises' => Expertise::where('is_active', true)->count(),
                 'partners' => Partner::where('is_active', true)->count(),
-            ],
-        ]);
+            ];
 
-        // Collections Eloquent NON mises en cache — évite la désérialisation
-        // avec allowed_classes=false (sécurité gadget chain).
+            return $data;
+        });
+
+        // Mappage HomepageData (snake_case) -> variables camelCase pour la vue
+        $viewSettings = [
+            'heroTitle' => $settings['hero_title'],
+            'heroSubtitle' => $settings['hero_subtitle'],
+            'heroEyebrow' => $settings['hero_eyebrow'],
+            'heroImage' => $settings['hero_image'],
+            'heroCtaLabel' => $settings['hero_cta_label'],
+            'heroCtaUrl' => $settings['hero_cta_url'],
+            'heroSecondaryLabel' => $settings['hero_secondary_label'],
+            'heroSecondaryUrl' => $settings['hero_secondary_url'],
+            'heroSlide2Eyebrow' => $settings['hero_slide2_eyebrow'],
+            'heroSlide2Title' => $settings['hero_slide2_title'],
+            'heroSlide2Subtitle' => $settings['hero_slide2_subtitle'],
+            'heroSlide2Image' => $settings['hero_slide2_image'],
+            'heroSlide2CtaLabel' => $settings['hero_slide2_cta_label'],
+            'heroSlide2CtaUrl' => $settings['hero_slide2_cta_url'],
+            'heroSlide2SecondaryLabel' => $settings['hero_slide2_secondary_label'],
+            'heroSlide2SecondaryUrl' => $settings['hero_slide2_secondary_url'],
+            'heroSlide3Eyebrow' => $settings['hero_slide3_eyebrow'],
+            'heroSlide3Title' => $settings['hero_slide3_title'],
+            'heroSlide3Subtitle' => $settings['hero_slide3_subtitle'],
+            'heroSlide3Image' => $settings['hero_slide3_image'],
+            'heroSlide3CtaLabel' => $settings['hero_slide3_cta_label'],
+            'heroSlide3CtaUrl' => $settings['hero_slide3_cta_url'],
+            'heroSlide3SecondaryLabel' => $settings['hero_slide3_secondary_label'],
+            'heroSlide3SecondaryUrl' => $settings['hero_slide3_secondary_url'],
+            'siteName' => $settings['site_name'],
+            'siteLogo' => $settings['site_logo'],
+            'statsProjectsLabel' => $settings['stats_projects_label'],
+            'statsExpertisesLabel' => $settings['stats_expertises_label'],
+            'statsPartnersLabel' => $settings['stats_partners_label'],
+            'aboutTitle' => $settings['about_title'],
+            'aboutContent' => $settings['about_content'],
+            'seoTitle' => $settings['seo_title'],
+            'seoDescription' => $settings['seo_description'],
+            'sectorsTitle' => $settings['sectors_title'],
+            'sectorsSubtitle' => $settings['sectors_subtitle'],
+            'sectorBtpBadge' => $settings['sector_btp_badge'],
+            'sectorBtpTitle' => $settings['sector_btp_title'],
+            'sectorBtpDesc' => $settings['sector_btp_desc'],
+            'sectorBtpArg' => $settings['sector_btp_arg'],
+            'sectorLotBadge' => $settings['sector_lot_badge'],
+            'sectorLotTitle' => $settings['sector_lot_title'],
+            'sectorLotDesc' => $settings['sector_lot_desc'],
+            'sectorLotArg' => $settings['sector_lot_arg'],
+            'sectorAgroBadge' => $settings['sector_agro_badge'],
+            'sectorAgroTitle' => $settings['sector_agro_title'],
+            'sectorAgroDesc' => $settings['sector_agro_desc'],
+            'sectorAgroArg' => $settings['sector_agro_arg'],
+            'portfolioTitle' => $settings['portfolio_title'],
+            'portfolioSubtitle' => $settings['portfolio_subtitle'],
+            'guaranteesTitle' => $settings['guarantees_title'],
+            'guaranteesSubtitle' => $settings['guarantees_subtitle'],
+            'guarantee1Title' => $settings['guarantee1_title'],
+            'guarantee1Desc' => $settings['guarantee1_desc'],
+            'guarantee2Title' => $settings['guarantee2_title'],
+            'guarantee2Desc' => $settings['guarantee2_desc'],
+            'guarantee3Title' => $settings['guarantee3_title'],
+            'guarantee3Desc' => $settings['guarantee3_desc'],
+            'guarantee4Title' => $settings['guarantee4_title'],
+            'guarantee4Desc' => $settings['guarantee4_desc'],
+            'processTitle' => $settings['process_title'],
+            'processSubtitle' => $settings['process_subtitle'],
+            'process1Title' => $settings['process1_title'],
+            'process1Subtitle' => $settings['process1_subtitle'],
+            'process1Desc' => $settings['process1_desc'],
+            'process2Title' => $settings['process2_title'],
+            'process2Subtitle' => $settings['process2_subtitle'],
+            'process2Desc' => $settings['process2_desc'],
+            'process3Title' => $settings['process3_title'],
+            'process3Subtitle' => $settings['process3_subtitle'],
+            'process3Desc' => $settings['process3_desc'],
+            'process4Title' => $settings['process4_title'],
+            'process4Subtitle' => $settings['process4_subtitle'],
+            'process4Desc' => $settings['process4_desc'],
+            'formTitle' => $settings['form_title'],
+            'formSubtitle' => $settings['form_subtitle'],
+            'formNote' => $settings['form_note'],
+            'stats' => $settings['stats'],
+        ];
+
         $expertises = Expertise::active()->withCount('services')->limit(6)->get();
         $featuredProjects = PublicProject::featured()->limit(6)->get();
         $latestPosts = Post::published()->limit(3)->get();
         $testimonials = Testimonial::where('is_active', true)->orderBy('order')->limit(3)->get();
         $partners = Partner::where('is_active', true)->orderBy('order')->get();
 
-        // Nettoie l'ancien cache empoisonné v1 (contenait des objets sérialisés).
-        if (Cache::has('home:vitrine:v1')) {
-            Cache::forget('home:vitrine:v1');
-        }
-
-        // Hero slideshow — 3 slides CDC (100% CMS, fallback sur featuredProjects / heroImage)
         $heroSlides = [
             [
-                'eyebrow' => $settings['heroEyebrow'] ?: 'BTP · Génie civil · VRD · Énergie',
-                'title' => $settings['heroTitle'],
-                'subtitle' => $settings['heroSubtitle'],
-                'image' => $settings['heroImage'],
-                'ctaLabel' => $settings['heroCtaLabel'] ?: 'Demander un devis',
-                'ctaUrl' => $settings['heroCtaUrl'] ?: route('public.quote.create'),
-                'secondaryLabel' => 'Voir nos réalisations',
-                'secondaryUrl' => route('public.projects.index'),
+                'eyebrow' => $viewSettings['heroEyebrow'] ?: 'BTP · Génie civil · VRD · Énergie',
+                'title' => $viewSettings['heroTitle'],
+                'subtitle' => $viewSettings['heroSubtitle'],
+                'image' => $viewSettings['heroImage'],
+                'ctaLabel' => $viewSettings['heroCtaLabel'] ?: 'Demander un devis',
+                'ctaUrl' => $viewSettings['heroCtaUrl'] ?: route('public.quote.create'),
+                'secondaryLabel' => $viewSettings['heroSecondaryLabel'] ?: 'Voir nos réalisations',
+                'secondaryUrl' => $viewSettings['heroSecondaryUrl'] ?: route('public.projects.index'),
             ],
             [
-                'eyebrow' => $settings['heroSlide2Eyebrow'] ?: 'Programmes immobiliers',
-                'title' => $settings['heroSlide2Title'] ?: 'Lotissements viabilisés, titres sécurisés',
-                'subtitle' => $settings['heroSlide2Subtitle'] ?: 'Terrains et villas disponibles — viabilisation complète, voirie, assainissement, titres fonciers sécurisés.',
-                'image' => $settings['heroSlide2Image'] ?: ($featuredProjects->get(0)?->cover_image ?? $settings['heroImage']),
-                'ctaLabel' => $settings['heroSlide2CtaLabel'] ?: 'Découvrir les programmes',
-                'ctaUrl' => $settings['heroSlide2CtaUrl'] ?: route('public.programs.index'),
-                'secondaryLabel' => $settings['heroSlide2SecondaryLabel'] ?: 'Demander un devis',
-                'secondaryUrl' => $settings['heroSlide2SecondaryUrl'] ?: route('public.quote.create'),
+                'eyebrow' => $viewSettings['heroSlide2Eyebrow'] ?: 'Programmes immobiliers',
+                'title' => $viewSettings['heroSlide2Title'] ?: 'Lotissements viabilisés, titres sécurisés',
+                'subtitle' => $viewSettings['heroSlide2Subtitle'] ?: 'Terrains et villas disponibles — viabilisation complète, voirie, assainissement, titres fonciers sécurisés.',
+                'image' => $viewSettings['heroSlide2Image'] ?: ($featuredProjects->get(0)?->cover_image ?? $viewSettings['heroImage']),
+                'ctaLabel' => $viewSettings['heroSlide2CtaLabel'] ?: 'Découvrir les programmes',
+                'ctaUrl' => $viewSettings['heroSlide2CtaUrl'] ?: route('public.programs.index'),
+                'secondaryLabel' => $viewSettings['heroSlide2SecondaryLabel'] ?: 'Demander un devis',
+                'secondaryUrl' => $viewSettings['heroSlide2SecondaryUrl'] ?: route('public.quote.create'),
             ],
             [
-                'eyebrow' => $settings['heroSlide3Eyebrow'] ?: 'Savoir-faire SIBEA',
-                'title' => $settings['heroSlide3Title'] ?: 'Infrastructures durables, chantiers maîtrisés',
-                'subtitle' => $settings['heroSlide3Subtitle'] ?: 'De l’étude à la réception : bâtiment, VRD, génie civil, énergie — qualité, sécurité, délais tenus.',
-                'image' => $settings['heroSlide3Image'] ?: ($featuredProjects->get(1)?->cover_image ?? $featuredProjects->get(0)?->cover_image ?? $settings['heroImage']),
-                'ctaLabel' => $settings['heroSlide3CtaLabel'] ?: 'Nos réalisations',
-                'ctaUrl' => $settings['heroSlide3CtaUrl'] ?: route('public.projects.index'),
-                'secondaryLabel' => $settings['heroSlide3SecondaryLabel'] ?: 'Nous contacter',
-                'secondaryUrl' => $settings['heroSlide3SecondaryUrl'] ?: route('public.contact'),
+                'eyebrow' => $viewSettings['heroSlide3Eyebrow'] ?: 'Savoir-faire SIBEA',
+                'title' => $viewSettings['heroSlide3Title'] ?: 'Infrastructures durables, chantiers maîtrisés',
+                'subtitle' => $viewSettings['heroSlide3Subtitle'] ?: 'De l’étude à la réception : bâtiment, VRD, génie civil, énergie — qualité, sécurité, délais tenus.',
+                'image' => $viewSettings['heroSlide3Image'] ?: ($featuredProjects->get(1)?->cover_image ?? $featuredProjects->get(0)?->cover_image ?? $viewSettings['heroImage']),
+                'ctaLabel' => $viewSettings['heroSlide3CtaLabel'] ?: 'Nos réalisations',
+                'ctaUrl' => $viewSettings['heroSlide3CtaUrl'] ?: route('public.projects.index'),
+                'secondaryLabel' => $viewSettings['heroSlide3SecondaryLabel'] ?: 'Nous contacter',
+                'secondaryUrl' => $viewSettings['heroSlide3SecondaryUrl'] ?: route('public.contact'),
             ],
         ];
 
-        $projectCategories = PublicProject::published()->reorder()->select('category')->distinct()->pluck('category')->filter()->values();
+        // Requête PG-safe : ORDER BY porte sur la colonne du SELECT DISTINCT,
+        // sinon PostgreSQL rejette (42P10) l'ORDER BY hérité du scope published().
+        $projectCategories = PublicProject::published()->reorder()->whereNotNull('category')->select('category')->distinct()->orderBy('category')->pluck('category')->filter()->values();
 
-        return view('public.home', array_merge($settings, compact('expertises', 'featuredProjects', 'latestPosts', 'testimonials', 'partners', 'heroSlides', 'projectCategories')));
+        return view('public.home', array_merge($viewSettings, compact('expertises', 'featuredProjects', 'latestPosts', 'testimonials', 'partners', 'heroSlides', 'projectCategories')));
     }
 }

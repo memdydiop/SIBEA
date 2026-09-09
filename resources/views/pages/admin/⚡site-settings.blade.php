@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Audit\LogAuditAction;
+use App\Data\HomepageData;
 use App\Models\SiteSetting;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
@@ -34,6 +35,7 @@ new #[Title('Paramètres du site')] class extends Component {
  public function settings()
  {
  return SiteSetting::when($this->search, fn ($q) => $q->where('key', 'ilike', "%{$this->search}%"))
+ ->whereNotIn('key', HomepageData::homepageKeys())
  ->orderBy('group')
  ->orderBy('key')
  ->get();
@@ -150,7 +152,8 @@ new #[Title('Paramètres du site')] class extends Component {
 
 <section class="w-full">
  <flux:heading size="xl" level="1">{{ __('Paramètres du site') }}</flux:heading>
- <flux:subheading class="mb-6">{{ __('Clés vitrine : hero_title, hero_subtitle, contact_* etc. Group general/contact/seo') }}</flux:subheading>
+ <flux:subheading class="mb-6">{{ __('Clés génériques (contact_*, menus, etc.). Les clés homepage (hero_*, site_*, stats_*, about_*, seo_*) sont gérées dans ') }}<a href="{{ route('admin.homepage') }}" class="underline hover:text-zinc-700">{{ __('Page d’accueil') }}</a>{{ __(' — masquées ici pour éviter la duplication.') }}</flux:subheading>
+ <flux:callout variant="secondary" icon="information-circle" class="mb-6">{{ __('Homepage vitrine éditée via Page d’accueil (flux:card slideshow 3 slides). Ce tableau liste uniquement les clés hors vitrine.') }}</flux:callout>
 
  {{-- Identité visuelle — Logo --}}
  <div class="mb-6 rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">

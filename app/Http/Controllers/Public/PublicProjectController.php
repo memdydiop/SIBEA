@@ -19,7 +19,7 @@ class PublicProjectController extends Controller
 
         return view('public.projects.index', [
             'projects' => $query->paginate(12)->withQueryString(),
-            'categories' => PublicProject::published()->reorder()->select('category')->distinct()->pluck('category'),
+            'categories' => PublicProject::published()->reorder()->whereNotNull('category')->select('category')->distinct()->orderBy('category')->pluck('category')->filter()->values(),
             'activeCategory' => $category ?? null,
         ]);
     }

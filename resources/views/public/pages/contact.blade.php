@@ -41,7 +41,8 @@
  <div class="mt-3 space-y-2 text-sm leading-relaxed text-zinc-600">
  <div class="flex items-start gap-2"><span class="text-zinc-400">📍</span><span>{{ $contactAddress }}</span></div>
  <div class="flex items-start gap-2"><span class="text-zinc-400">✉️</span><a href="mailto:{{ $contactEmail }}" class="text-primary-700 hover:text-accent hover:underline">{{ $contactEmail }}</a></div>
- <div class="flex items-start gap-2"><span class="text-zinc-400">📞</span><a href="tel:{{ $contactPhone }}" class="text-primary-700 hover:text-accent hover:underline">{{ $contactPhone }}</a></div>
+  <div class="flex items-start gap-2"><span class="text-zinc-400">📞</span><a href="tel:{{ $contactPhone }}" class="text-primary-700 hover:text-accent hover:underline">{{ $contactPhone }}</a></div>
+  <div class="flex items-start gap-2"><span class="text-zinc-400">💬</span><x-whatsapp-link variant="pill" label="WhatsApp" /> <span class="text-xs text-zinc-500">{{ __('Réponse rapide') }}</span></div>
  </div>
  </div>
  <div class="rounded-xl bg-primary-900 p-6 text-white">

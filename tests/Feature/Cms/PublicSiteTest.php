@@ -140,3 +140,37 @@ test('quote request validation requires consent and description', function () {
 
     $response->assertSessionHasErrors(['description', 'consent']);
 });
+
+test('home page renders distinct project categories', function () {
+    PublicProject::factory()->create(['is_published' => true, 'category' => 'VRD', 'year' => 2023]);
+    PublicProject::factory()->create(['is_published' => true, 'category' => 'Bâtiment', 'year' => 2025]);
+    PublicProject::factory()->create(['is_published' => true, 'category' => 'VRD', 'year' => 2024]);
+
+    $response = $this->get(route('home'));
+
+    $response->assertOk()
+        ->assertSee('Bâtiment')
+        ->assertSee('VRD');
+});
+
+test('vitrine index pages render their distinct filters', function () {
+    PublicProject::factory()->create(['is_published' => true, 'category' => 'Génie civil']);
+    Post::factory()->create(['is_published' => true, 'published_at' => now()->subDay(), 'category' => 'Chantier']);
+
+    $this->get(route('public.projects.index'))->assertOk()->assertSee('Génie civil');
+    $this->get(route('public.posts.index'))->assertOk()->assertSee('Chantier');
+    $this->get(route('public.programs.index'))->assertOk();
+});
+
+test('distinct filter queries stay PostgreSQL compatible', function () {
+    // SQLite tolère DISTINCT + ORDER BY hérité du scope, PostgreSQL rejette (42P10).
+    // Ce garde-fou vérifie que l'ORDER BY ne porte que sur la colonne du SELECT DISTINCT.
+    $projectSql = PublicProject::published()->reorder()->whereNotNull('category')->select('category')->distinct()->orderBy('category')->toSql();
+    $postSql = Post::published()->reorder()->whereNotNull('category')->select('category')->distinct()->orderBy('category')->toSql();
+
+    expect($projectSql)->toContain('distinct')
+        ->and($projectSql)->toContain('order by "category"')
+        ->and($projectSql)->not->toContain('order by "year"')
+        ->and($postSql)->toContain('order by "category"')
+        ->and($postSql)->not->toContain('order by "published_at"');
+});

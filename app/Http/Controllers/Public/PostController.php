@@ -19,7 +19,7 @@ class PostController extends Controller
 
         return view('public.posts.index', [
             'posts' => $query->paginate(9)->withQueryString(),
-            'categories' => Post::published()->reorder()->select('category')->distinct()->pluck('category')->filter(),
+            'categories' => Post::published()->reorder()->whereNotNull('category')->select('category')->distinct()->orderBy('category')->pluck('category')->filter()->values(),
             'activeCategory' => $category ?? null,
         ]);
     }

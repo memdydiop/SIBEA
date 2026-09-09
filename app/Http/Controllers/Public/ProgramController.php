@@ -19,7 +19,7 @@ class ProgramController extends Controller
 
         return view('public.programs.index', [
             'programs' => $query->paginate(12)->withQueryString(),
-            'cities' => Program::published()->reorder()->select('city')->distinct()->pluck('city')->filter()->values(),
+            'cities' => Program::published()->reorder()->whereNotNull('city')->select('city')->distinct()->orderBy('city')->pluck('city')->filter()->values(),
             'activeCity' => $city ?? null,
         ]);
     }
